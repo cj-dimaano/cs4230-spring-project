@@ -5,6 +5,11 @@ Date created: March 29, 2017
 
 Sequential code of a fully connected artificial neural network.
 
+Compile with:
+```
+$ gcc -Wall -lm -o seq seq.c
+```
+
 *******************************************************************************/
 
 #include <math.h>
@@ -17,15 +22,34 @@ Sequential code of a fully connected artificial neural network.
 #define FEATURE_COUNT 361
 #define MAX_EXAMPLES 0x2000
 
-static int load(char **filePath, double **x, double *y);
+static int load(const char *filePath, double **x, double *y);
 
 int main(int argc, char **argv) {
-    double x[MAX_EXAMPLES][FEATURE_COUNT], y[MAX_EXAMPLES];
-    int count;
+    double **x, *y;
+    int count, i;
 
+    /* Allocate memory for examples. (Assume there is enough memory.) */
+    x = (double **)calloc(MAX_EXAMPLES, sizeof(double *));
+    y = (double *)calloc(MAX_EXAMPLES, sizeof(double));
+    for(i = 0; i < MAX_EXAMPLES; i++)
+        x[i] = (double *)calloc(FEATURE_COUNT, sizeof(double));
+
+    /* Load training data. */
     count = load(TRAIN_SET, x, y);
     if(count < 0)
         return count;
+
+    /* Train classifier. */
+
+    /* Load test data. */
+
+    /* Evaluate classifier accuracy. */
+
+    /* Free memory from examples. */
+    free(y);
+    for(i = 0; i < MAX_EXAMPLES; i++)
+        free(x[i]);
+    free(x);
 
     return 0;
 }
@@ -42,9 +66,9 @@ int main(int argc, char **argv) {
  *   `<index>` is in the range [1..FEATURE_COUNT]. Feature values are converted
  *   to a number using the formula `1 - exp(-<value>)`.
  */
-static int load(const char **filePath, double **x, double *y) {
-    int i, count = 0, index, val;
-    char token[40], line[0x400];
+static int load(const char *filePath, double **x, double *y) {
+    int i, val, count = 0;
+    char line[0x400], *token;
     FILE *file;
 
     /* Open the file. */
@@ -63,13 +87,13 @@ static int load(const char **filePath, double **x, double *y) {
         }
 
         /* Get the label from the line. */
-        if(sscanf(line, "%d", &val) < 1) {
-            perror("error `load`: parsing label");
+        token = strtok(line, " ");
+        if(token == NULL) {
+            fprintf(stderr, "error `load`: parsing label\n");
             fclose(file);
             return -3;
         }
-        y[count] = val;
-        printf("y = %d\n", val);
+        y[count] = atoi(token);
 
         /* Reset the example features. */
         x[count][0] = 1;
@@ -77,19 +101,13 @@ static int load(const char **filePath, double **x, double *y) {
             x[count][i] = 0;
 
         /* Parse example features from the line. */
-        while(sscanf(line, "%s", token) == 1) {
-            i = 0;
-            while(i < 40 && token[i] != ':' && token[i] != 0)
-                i++;
-            if(i == 40 || token[i] == 0) {
-                perror("error `load`: unexpcted token");
+        while((token = strtok(NULL, " ")) != NULL) {
+            if(sscanf(token, "%d:%d", &i, &val) < 2) {
+                fprintf(stderr, "error `load`: unable to parse token: %s\n", token);
                 fclose(file);
                 return -4;
             }
-            index = atoi(token);
-            val = atoi(token + i + 1);
-            x[count][index] = 1.0 - exp((double)(-1 * val));
-            printf("x[%d][%d] = %d\n", count, index, val);
+            x[count][i] = 1.0 - exp((double)(-1 * val));
         }
 
         /* Empty the string and update example count. */
