@@ -12,110 +12,156 @@ $ gcc -Wall -lm -o seq seq.c
 
 *******************************************************************************/
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+/** Includes ******************************************************************/
 
-#define TRAIN_SET "./data/data.train"
-#define TEST_SET "./data/data.test"
-#define FEATURE_COUNT 361
-#define MAX_EXAMPLES 0x2000
+#include "data.h"
+#include "mem.h"
 
-static int load(const char *filePath, double **x, double *y);
+/** Declarations **************************************************************/
+
+static int train(
+    const double **,
+    const double *,
+    const int,
+    const int,
+    const int,
+    const int,
+    const double,
+    double ***
+);
+static void evaluate(
+    const int,
+    const int,
+    const double ***,
+    const double **,
+    const double *
+);
+
+/** Main **********************************************************************/
 
 int main(int argc, char **argv) {
-    double **x, *y;
-    int count, i;
+    double ***w, **x, *y;
+    int ret, layerCount = 0, layerNodeCount = 0, epochs = 1, gamma0 = 1;
 
-    /* Allocate memory for examples. (Assume there is enough memory.) */
-    x = (double **)calloc(MAX_EXAMPLES, sizeof(double *));
-    y = (double *)calloc(MAX_EXAMPLES, sizeof(double));
-    for(i = 0; i < MAX_EXAMPLES; i++)
-        x[i] = (double *)calloc(FEATURE_COUNT, sizeof(double));
+    // TODO
+    // command line arguments
+
+    /* Allocate memory for examples. */
+    ret = init(layerCount, layerNodeCount, &w, &x, &y);
+    if(ret < 0)
+        return ret;
 
     /* Load training data. */
-    count = load(TRAIN_SET, x, y);
-    if(count < 0)
-        return count;
+    ret = load(TRAIN_SET, x, y);
+    if(ret < 0) {
+        cleanup(layerCount, layerNodeCount, &w, &x, &y);
+        return ret;
+    }
 
     /* Train classifier. */
+    ret = train(
+        (const double **)x,
+        y,
+        ret,
+        layerCount,
+        layerNodeCount,
+        epochs,
+        gamma0,
+        w
+    );
+    if(ret < 0) {
+        cleanup(layerCount, layerNodeCount, &w, &x, &y);
+        return ret;
+    }
 
     /* Load test data. */
+    ret = load(TEST_SET, x, y);
+    if(ret < 0) {
+        cleanup(layerCount, layerNodeCount, &w, &x, &y);
+        return ret;
+    }
 
     /* Evaluate classifier accuracy. */
+    evaluate(
+        layerCount,
+        layerNodeCount,
+        (const double ***)w,
+        (const double **)x,
+        (const double *)y
+    );
 
-    /* Free memory from examples. */
-    free(y);
-    for(i = 0; i < MAX_EXAMPLES; i++)
-        free(x[i]);
-    free(x);
+    /* Cleanup memory from examples. */
+    cleanup(layerCount, layerNodeCount, &w, &x, &y);
+
+    return 0;
+}
+
+/** Static functions **********************************************************/
+
+/**
+ * train
+ *
+ * @summary
+ *   Trains the weights of the artificial neural network classifier.
+ */
+static int train(
+    const double **x,
+    const double *y,
+    const int count,
+    const int layerCount,
+    const int layerNodeCount,
+    const int epochs,
+    const double gamma0,
+    double ***w
+) {
+    int e, i;
+    double ***wSwap1, ***wSwap2, **z;
+
+    /* Allocate swap weights. */
+    i = mallocWeights(layerCount, layerNodeCount, &wSwap2);
+    if(i < 0)
+        return i;
+
+    /* Allocate z. */
+    i = mallocz(layerCount, layerNodeCount, &z);
+    if(i < 0)
+        return i;
+
+    /* Initialize weights. */
+    fillWeights(layerCount, layerNodeCount, (double * const * const * const)w);
+    wSwap1 = w;
+
+    /* Train over epochs. */
+    for(e = 0; e < epochs; e++) {
+        /* Shuffle examples. */
+
+        /* Adjust weights for each example. */
+        for(i = 0; i < count; i++) {
+
+        }
+    }
+
+    /* Copy trained weights into w. */
+
+    /* Cleanup memory. */
+    if(w == wSwap1)
+        freeWeights(layerCount, layerNodeCount, &wSwap2);
+    else
+        freeWeights(layerCount, layerNodeCount, &wSwap1);
+    freez(layerCount, &z);
 
     return 0;
 }
 
 /**
- * load
- *
- * @summary
- *   Loads a set of examples from the given file.
- *
- * @description
- *   Examples are separated by line. The first token in the line is the label;
- *   subsequent tokens are features in the format `<index>:<value>`, where
- *   `<index>` is in the range [1..FEATURE_COUNT]. Feature values are converted
- *   to a number using the formula `1 - exp(-<value>)`.
+ * evaluate
  */
-static int load(const char *filePath, double **x, double *y) {
-    int i, val, count = 0;
-    char line[0x400], *token;
-    FILE *file;
-
-    /* Open the file. */
-    file = fopen(filePath, "r");
-    if(file == NULL) {
-        perror("error `load`: opening file");
-        return -1;
-    }
-
-    /* Read each line. */
-    while(fgets(line, 0x400, file) != NULL) {
-        if(line[0] == 0) {
-            perror("error `load`: reading line");
-            fclose(file);
-            return -2;
-        }
-
-        /* Get the label from the line. */
-        token = strtok(line, " ");
-        if(token == NULL) {
-            fprintf(stderr, "error `load`: parsing label\n");
-            fclose(file);
-            return -3;
-        }
-        y[count] = atoi(token);
-
-        /* Reset the example features. */
-        x[count][0] = 1;
-        for(i = 1; i < FEATURE_COUNT; i++)
-            x[count][i] = 0;
-
-        /* Parse example features from the line. */
-        while((token = strtok(NULL, " ")) != NULL) {
-            if(sscanf(token, "%d:%d", &i, &val) < 2) {
-                fprintf(stderr, "error `load`: unable to parse token: %s\n", token);
-                fclose(file);
-                return -4;
-            }
-            x[count][i] = 1.0 - exp((double)(-1 * val));
-        }
-
-        /* Empty the string and update example count. */
-        line[0] = 0;
-        count++;
-    }
-
-    /* Close the file and return the number of examples. */
-    fclose(file);
-    return count;
+static void evaluate(
+    const int layerCount,
+    const int layerNodeCount,
+    const double ***w,
+    const double **x,
+    const double *y
+) {
+    // TODO:
 }
