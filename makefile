@@ -3,7 +3,7 @@ ODIR=obj
 BDIR=bin
 
 CC=gcc
-CFLAGS=-Wall -I$(SDIR)
+CFLAGS=-Wall -O3 -I$(SDIR)
 
 LIBS=-lm
 

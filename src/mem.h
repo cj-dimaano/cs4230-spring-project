@@ -11,5 +11,6 @@ int init(const int, const int, double ****, double ***, double **);
 void cleanup(const int, const int, double ****, double ***, double **);
 int mallocWeights(const int, const int, double ****);
 void freeWeights(const int, const int, double ****);
+void copyWeights(const int, const int, double ***, double ***);
 int mallocz(const int, const int, double ***);
 void freez(const int, double ***);

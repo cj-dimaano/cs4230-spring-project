@@ -15,4 +15,4 @@ Data management stuff.
 
 int load(const char * const, double * const * const, double * const);
 void fillWeights(const int, const int, double * const * const * const);
-void shuffle(const int, double ***, double **);
+void shuffle(const int, double **, double *);

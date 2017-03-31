@@ -9,6 +9,7 @@ Memory management stuff.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "data.h"
 #include "mem.h"
@@ -212,6 +213,42 @@ void freeWeights(
 }
 
 /**
+ * copyWeights
+ */
+void copyWeights(
+    const int layerCount,
+    const int layerNodeCount,
+    double ***src,
+    double ***dst
+) {
+    int i, j;
+    if(layerCount > 0) {
+        for(i = 0; i < layerNodeCount; i++)
+            memcpy(dst[0][i], src[0][i], FEATURE_COUNT * sizeof(double));
+        for(i = 1; i < layerCount; i++) {
+            for(j = 0; j < layerNodeCount; j++)
+                memcpy(
+                    dst[i][j],
+                    src[i][j],
+                    (layerNodeCount + 1) * sizeof(double)
+                );
+        }
+        memcpy(
+            dst[layerCount][0],
+            src[layerCount][0],
+            (layerNodeCount + 1) * sizeof(double)
+        );
+    }
+    else {
+        memcpy(
+            dst[layerCount][0],
+            src[layerCount][0],
+            FEATURE_COUNT * sizeof(double)
+        );
+    }
+}
+
+/**
  * mallocz
  */
 int mallocz(
@@ -220,24 +257,30 @@ int mallocz(
     double ***z
 ) {
     int i;
-    (*z) = (double **)calloc(layerCount, sizeof(double *));
+    (*z) = (double **)calloc(layerCount + 1, sizeof(double *));
     if((*z) == NULL) {
         perror("error `mallocz`: not enough memory");
         return -1;
     }
-    for(i = 0; i < layerCount; i++) {
+    (*z)[0] = (double *)calloc(FEATURE_COUNT, sizeof(double));
+    if((*z)[0] == NULL) {
+        perror("error `mallocz`: not enough memory");
+        free((*z));
+        return -2;
+    }
+    for(i = 1; i < layerCount + 1; i++) {
         (*z)[i] = (double *)calloc(layerNodeCount + 1, sizeof(double));
         if((*z)[i] == NULL)
             break;
     }
-    if(i < layerCount) {
+    if(i < layerCount + 1) {
         perror("error `mallocz`: not enough memory");
         while(i > 0) {
             i--;
             free((*z)[i]);
         }
         free((*z));
-        return -2;
+        return -3;
     }
     return 0;
 }
@@ -250,7 +293,7 @@ void freez(
     double ***z
 ) {
     int i;
-    for(i = 0; i < layerCount; i++)
+    for(i = 0; i < layerCount + 1; i++)
         free((*z)[i]);
     free((*z));
     (*z) = NULL;

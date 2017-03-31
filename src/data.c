@@ -65,9 +65,6 @@ int load(
             return -3;
         }
         y[count] = atoi(token);
-        #ifdef DEBUG
-        printf("%d", (int)y[count]);
-        #endif
 
         /* Reset the example features. */
         x[count][0] = 1;
@@ -86,13 +83,7 @@ int load(
                 return -4;
             }
             x[count][i] = 1.0 - exp((double)(-1 * val));
-            #ifdef DEBUG
-            printf(" %d:%d", i, val);
-            #endif
         }
-        #ifdef DEBUG
-        printf("\n");
-        #endif
 
         /* Empty the string and update example count. */
         line[0] = 0;
@@ -145,5 +136,23 @@ void fillWeights(
             while(w[0][0][i] == 0)
                 w[0][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
         }
+    }
+}
+
+/**
+ * shuffle
+ */
+void shuffle(const int count, double **x, double *y) {
+    int i, j;
+    double *tmpx, tmpy;
+    srand(time(NULL));
+    for(i = 0; i < count; i++) {
+        j = rand() % count;
+        tmpx = x[i];
+        x[i] = x[j];
+        x[j] = tmpx;
+        tmpy = y[i];
+        y[i] = y[j];
+        y[j] = tmpy;
     }
 }
