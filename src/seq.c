@@ -5,17 +5,13 @@ Date created: March 29, 2017
 
 Sequential code of a fully connected artificial neural network.
 
-Compile with:
-```
-$ gcc -Wall -lm -o seq seq.c
-```
-
 *******************************************************************************/
 
 /** Includes ******************************************************************/
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "data.h"
@@ -49,15 +45,18 @@ static double propagate(
     const int,
     const int
 );
+static int parseArgs(const int, char **, int *, int *, int *, double *);
+static void printUsage(const char *);
 
 /** Main **********************************************************************/
 
 int main(int argc, char **argv) {
-    double ***w, **x, *y;
-    int ret, layerCount = 0, layerNodeCount = 0, epochs = 1, gamma0 = 1;
+    double ***w, **x, *y, gamma0 = 1;
+    int ret, layerCount = 0, layerNodeCount = 1, epochs = 1;
 
-    // TODO
-    // command line arguments
+    /* Parse command-line arguments. */
+    ret = parseArgs(argc, argv, &layerCount, &layerNodeCount, &epochs, &gamma0);
+    printf("%d %d %d %f\n", layerCount, layerNodeCount, epochs, gamma0);
 
     /* Allocate memory for examples. */
     ret = init(layerCount, layerNodeCount, &w, &x, &y);
@@ -267,4 +266,109 @@ static double propagate(
       result = z[i][k] * w[i + 1][0][j + 1] * z[i + 1][j + 1];
 
     return result;
+}
+
+/**
+ * parseArgs
+ */
+static int parseArgs(
+    const int argc,
+    char **argv,
+    int *layerCount,
+    int *layerNodeCount,
+    int *epochs,
+    double *gamma0
+) {
+    int i;
+    for(i = 1; i < argc; i++) {
+        /* layerCount */
+        if(strcmp(argv[i], "-l") == 0) {
+            i++;
+            if(i == argc) {
+                fprintf(stderr, "error: unexpected end of argument list\n");
+                printUsage(argv[0]);
+                return -1;
+            }
+            (*layerCount) = atoi(argv[i]);
+            if((*layerCount) < 0) {
+                fprintf(stderr, "error: number of hidden layers must be non-"
+                    "negative\n");
+                printUsage(argv[0]);
+                return -2;
+            }
+        }
+        /* layerNodeCount */
+        else if(strcmp(argv[i], "-n") == 0) {
+            i++;
+            if(i == argc) {
+                fprintf(stderr, "error: unexpected end of argument list\n");
+                printUsage(argv[0]);
+                return -3;
+            }
+            (*layerNodeCount) = atoi(argv[i]);
+            if((*layerNodeCount) < 1) {
+                fprintf(stderr, "error: number of layer nodes must be greater"
+                    " than 0\n");
+                printUsage(argv[0]);
+                return -4;
+            }
+        }
+        /* epochs */
+        else if(strcmp(argv[i], "-e") == 0) {
+            i++;
+            if(i == argc) {
+                fprintf(stderr, "error: unexpected end of argument list\n");
+                printUsage(argv[0]);
+                return -5;
+            }
+            (*epochs) = atoi(argv[i]);
+            if((*epochs) < 1) {
+                fprintf(stderr, "error: number of epochs must be greater than"
+                    " 0\n");
+                printUsage(argv[0]);
+                return -6;
+            }
+        }
+        /* gamma0 */
+        else if(strcmp(argv[i], "-g") == 0) {
+            i++;
+            if(i == argc) {
+                fprintf(stderr, "error: unexpected end of argument list\n");
+                printUsage(argv[0]);
+                return -7;
+            }
+            (*gamma0) = atof(argv[i]);
+            if((*gamma0) <= 0) {
+                fprintf(stderr, "error: gamma0 must be positive\n");
+                printUsage(argv[0]);
+                return -8;
+            }
+        }
+        /* unexpected argument */
+        else {
+            fprintf(stderr, "error: unexpected argument\n");
+            printUsage(argv[0]);
+            return -9;
+        }
+    }
+    return 0;
+}
+
+/**
+ * printUsage
+ */
+static void printUsage(const char *prgm) {
+    printf("usage:\n");
+    printf("\t%s [-e <int>] [-l <int>] [-n <int>] [-g <double>]\n\n", prgm);
+    printf("Options:\n");
+    printf("\t-e <int>       Specifies the number of epochs over which to"
+        " train.\n");
+    printf("\t               The default is 1.\n");
+    printf("\t-l <int>       Specifies the number of hidden layers.\n");
+    printf("\t               The default is 0.\n");
+    printf("\t-n <int>       Specifies the number of nodes per hidden"
+        " layer.\n");
+    printf("\t               The default is 1.\n");
+    printf("\t-g <double>    Specifies the gamma0 hyper parameter.\n");
+    printf("\t               The default is 1.\n\n");
 }
