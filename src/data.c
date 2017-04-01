@@ -65,6 +65,8 @@ int load(
             return -3;
         }
         y[count] = atoi(token);
+        if(y[count] == 0.0)
+            y[count] = -1;
 
         /* Reset the example features. */
         x[count][0] = 1;
@@ -107,35 +109,20 @@ void fillWeights(
     srand(time(NULL));
     if(layerCount > 0) {
         for(i = 0; i < layerNodeCount; i++) {
-            for(j = 0; j < FEATURE_COUNT; j++) {
-                w[0][i][j] = 0;
-                while(w[0][i][j] == 0)
-                    w[0][i][j] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-            }
+            for(j = 0; j < FEATURE_COUNT; j++)
+                w[0][i][j] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
         }
         for(i = 1; i < layerCount; i++) {
-            for(j = 0; j < layerNodeCount; j++) {
-                for(k = 0; k < layerNodeCount + 1; k++) {
-                    w[i][j][k] = 0;
-                    while(w[i][j][k] == 0)
-                        w[i][j][k] =
-                            ((double)rand() / (double)RAND_MAX) * 2 - 1;
-                }
-            }
+            for(j = 0; j < layerNodeCount; j++)
+                for(k = 0; k < layerNodeCount + 1; k++)
+                    w[i][j][k] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
         }
-        for(i = 0; i < FEATURE_COUNT; i++) {
-            w[layerCount][0][i] = 0;
-            while(w[layerCount][0][i] == 0)
-                w[layerCount][0][i] =
-                    ((double)rand() / (double)RAND_MAX) * 2 - 1;
-        }
+        for(i = 0; i < FEATURE_COUNT; i++)
+            w[layerCount][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
     }
     else {
-        for(i = 0; i < FEATURE_COUNT; i++) {
-            w[0][0][i] = 0;
-            while(w[0][0][i] == 0)
-                w[0][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-        }
+        for(i = 0; i < FEATURE_COUNT; i++)
+            w[0][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
     }
 }
 

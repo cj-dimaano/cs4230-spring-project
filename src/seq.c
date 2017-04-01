@@ -29,7 +29,8 @@ static int train(
     const double,
     double ***
 );
-static void evaluate(
+static void test(
+    const int,
     const int,
     const int,
     const double ***,
@@ -45,18 +46,47 @@ static double propagate(
     const int,
     const int
 );
+static double getPrediction(
+    const int,
+    const int,
+    const double ***,
+    const double *
+);
 static int parseArgs(const int, char **, int *, int *, int *, double *);
 static void printUsage(const char *);
+
+/** Static data ***************************************************************/
+
+/* For calculating predictions */
+static double *v = NULL;
+static double *u = NULL;
+static int vlen = 0;
 
 /** Main **********************************************************************/
 
 int main(int argc, char **argv) {
-    double ***w, **x, *y, gamma0 = 1;
+    double ***w, **x, *y, gamma0 = 0.01;
     int ret, layerCount = 0, layerNodeCount = 1, epochs = 1;
 
     /* Parse command-line arguments. */
     ret = parseArgs(argc, argv, &layerCount, &layerNodeCount, &epochs, &gamma0);
-    printf("%d %d %d %f\n", layerCount, layerNodeCount, epochs, gamma0);
+    printf("epochs: %d\n", epochs);
+    printf("layers: %d\n", layerCount);
+    printf("layer nodes: %d\n", layerNodeCount);
+    printf("gamma: %f\n", gamma0);
+
+    /* Initialize v and u. */
+    vlen = layerNodeCount + 1;
+    v = (double *)calloc(vlen, sizeof(double));
+    if(v == NULL) {
+        perror("error `main`: not enough memory");
+        return -1;
+    }
+    u = (double *)calloc(vlen, sizeof(double));
+    if(u == NULL) {
+        perror("error `main`: not enough memory");
+        return -2;
+    }
 
     /* Allocate memory for examples. */
     ret = init(layerCount, layerNodeCount, &w, &x, &y);
@@ -64,6 +94,7 @@ int main(int argc, char **argv) {
         return ret;
 
     /* Load training data. */
+    printf("load\n");
     ret = load(TRAIN_SET, x, y);
     if(ret < 0) {
         cleanup(layerCount, layerNodeCount, &w, &x, &y);
@@ -71,6 +102,7 @@ int main(int argc, char **argv) {
     }
 
     /* Train classifier. */
+    printf("training... ");
     ret = train(
         x,
         y,
@@ -85,6 +117,7 @@ int main(int argc, char **argv) {
         cleanup(layerCount, layerNodeCount, &w, &x, &y);
         return ret;
     }
+    printf("done.\n");
 
     /* Load test data. */
     ret = load(TEST_SET, x, y);
@@ -93,10 +126,12 @@ int main(int argc, char **argv) {
         return ret;
     }
 
-    /* Evaluate classifier accuracy. */
-    evaluate(
+    /* Test classifier accuracy. */
+    printf("test\n");
+    test(
         layerCount,
         layerNodeCount,
+        ret,
         (const double ***)w,
         (const double **)x,
         (const double *)y
@@ -230,16 +265,56 @@ static int train(
 }
 
 /**
- * evaluate
+ * test
  */
-static void evaluate(
+static void test(
     const int layerCount,
     const int layerNodeCount,
+    const int count,
     const double ***w,
     const double **x,
     const double *y
 ) {
-    // TODO:
+    int i;
+    const double *x_i;
+    double y_i, y_p, p, r, f1, accuracy;
+    /* True/False Positive/Negative */
+    int tp = 0;
+    int fp = 0;
+    int tn = 0;
+    int fn = 0;
+
+    for(i = 0; i < count; i++) {
+        x_i = x[i];
+        y_i = y[i];
+        y_p = getPrediction(layerCount, layerNodeCount, w, x_i);
+        if(y_i > 0 && y_p > 0)
+            tp++;
+        else if(y_i > 0 && y_p < 0)
+            fn++;
+        else if(y_i < 0 && y_p > 0)
+            fp++;
+        else
+            tn++;
+    }
+
+    p = 0;
+    r = 0;
+    f1 = 0;
+    if(tp > 0) {
+        p = (double)tp / (double)(tp + fp);
+        r = (double)tp / (double)(tp + fn);
+        f1 = 2 * p * r / (p + r);
+    }
+    else {
+        if(fp == 0)
+            p = 1;
+        if(fn == 0)
+            r = 1;
+    }
+
+    accuracy = (double)(tp + tn) / (double)count;
+    printf("accuracy: %f\nf1: %f\n", accuracy, f1);
 }
 
 /**
@@ -266,6 +341,50 @@ static double propagate(
       result = z[i][k] * w[i + 1][0][j + 1] * z[i + 1][j + 1];
 
     return result;
+}
+
+/**
+ * getPrediction
+ */
+static double getPrediction(
+    const int layerCount,
+    const int layerNodeCount,
+    const double ***w,
+    const double *x_i
+) {
+    int i, j, k;
+    double *swap1 = v, *swap2 = u, *tmpswap, result = 0;
+    if(layerCount > 0) {
+        swap1[0] = 1;
+        for(i = 1; i < layerNodeCount + 1; i++) {
+            swap1[i] = 0;
+            for(j = 0; j < FEATURE_COUNT; j++) {
+                swap1[i] += x_i[j] * w[0][i - 1][j];
+            }
+        }
+        tmpswap = swap1;
+        swap1 = swap2;
+        swap2 = tmpswap;
+        for(i = 1; i < layerCount; i++) {
+            swap1[0] = 1;
+            for(j = 1; j < layerNodeCount + 1; j++) {
+                swap1[j] = 0;
+                for(k = 0; k < layerNodeCount + 1; k++) {
+                    swap1[j] += swap2[k] * w[i][j - 1][k];
+                }
+            }
+            tmpswap = swap1;
+            swap1 = swap2;
+            swap2 = tmpswap;
+        }
+        for(i = 0; i < layerNodeCount + 1; i++)
+            result += swap2[i] * w[layerCount][0][i];
+    }
+    else {
+        for(i = 0; i < FEATURE_COUNT; i++)
+            result += x_i[i] * w[0][0][i];
+    }
+    return result < 0 ? -1 : 1;
 }
 
 /**
@@ -370,5 +489,5 @@ static void printUsage(const char *prgm) {
         " layer.\n");
     printf("\t               The default is 1.\n");
     printf("\t-g <double>    Specifies the gamma0 hyper parameter.\n");
-    printf("\t               The default is 1.\n\n");
+    printf("\t               The default is 0.01.\n\n");
 }
