@@ -4,10 +4,7 @@ Created by: CJ Dimaano
 Date created: March 29, 2017
 
 Sequential code of a fully connected artificial neural network.
-
 *******************************************************************************/
-
-/** Includes ******************************************************************/
 
 #include <math.h>
 #include <stdio.h>
@@ -20,44 +17,93 @@ Sequential code of a fully connected artificial neural network.
 /** Declarations **************************************************************/
 
 static int train(
-    double **,
-    double *,
-    const int,
-    const int,
-    const int,
-    const int,
-    const double,
-    double ***
+    double * const x,
+    double * const y,
+    const int count,
+    const int layerCount,
+    const int layerNodeCount,
+    const int epochs,
+    const double gamma0,
+    double * const w
 );
 static void test(
-    const int,
-    const int,
-    const int,
-    const double ***,
-    const double **,
-    const double *
+    const double * const x,
+    const double * const y,
+    const int count,
+    const int layerCount,
+    const int layerNodeCount,
+    const double * const w
 );
 static double propagate(
-    const int,
-    const int,
-    const double ***,
-    const double **,
-    const int,
-    const int,
-    const int
+    const int layerCount,
+    const int layerNodeCount,
+    const double * const x_i,
+    const double * const w,
+    const double * const z,
+    const int i,
+    const int j,
+    const int k
 );
 static double getPrediction(
-    const int,
-    const int,
-    const double ***,
-    const double *
+    const double * const x_i,
+    const int layerCount,
+    const int layerNodeCount,
+    const double * const w
 );
 static int parseArgs(const int, char **, int *, int *, int *, double *);
-static void printUsage(const char *);
+static void printUsage(const char * const);
+
+
+
+static void printarr(const double * const arr, const int len) {
+    int i;
+    printf("[");
+    for(i = 0; i < len; i++)
+        printf(" %.3f ", arr[i]);
+    printf("]\n");
+}
+
+static void printlayer(const double * const layer, const int n, const int w) {
+    int i;
+    printf("[\n");
+    for(i = 0; i < n; i++)
+        printarr((layer + i * w), w);
+    printf("]\n");
+}
+
+static void printw(const double * const w, const int l, const int n) {
+    int i;
+    const double *wptr = w;
+    printf("[\n");
+    printlayer(wptr, (l > 0 ? n : 1), FEATURE_COUNT);
+    wptr = (wptr + (l > 0 ? n : 1) * FEATURE_COUNT);
+    for(i = 1; i < l; i++) {
+        printlayer(wptr, n, n + 1);
+        wptr = (wptr + n * (n + 1));
+    }
+    if(l > 0) {
+        printlayer(wptr, 1, n + 1);
+    }
+    printf("]\n");
+}
+
+// static void printx_i(const double * const x_i) {
+//     int i;
+//     printf("[");
+//     for(i = 0; i < FEATURE_COUNT; i++) {
+//         if(x_i[i] == 0.0)
+//             printf(" . ");
+//         else
+//             printf(" %f ", x_i[i]);
+//     }
+//     printf("]\n");
+// }
+
+
 
 /** Static data ***************************************************************/
 
-/* For calculating predictions */
+/*** For calculating predictions ***/
 static double *v = NULL;
 static double *u = NULL;
 static int vlen = 0;
@@ -65,44 +111,50 @@ static int vlen = 0;
 /** Main **********************************************************************/
 
 int main(int argc, char **argv) {
-    double ***w, **x, *y, gamma0 = 0.01;
-    int ret, layerCount = 0, layerNodeCount = 1, epochs = 1;
+    double *w, *x, *y, gamma0 = 0.01;
+    int ret, layerCount = 1, layerNodeCount = FEATURE_COUNT / 2, epochs = 100;
 
-    /* Parse command-line arguments. */
+    /*** Parse command-line arguments. ***/
     ret = parseArgs(argc, argv, &layerCount, &layerNodeCount, &epochs, &gamma0);
+    if(ret < 0) {
+        return -1;
+    }
     printf("epochs: %d\n", epochs);
     printf("layers: %d\n", layerCount);
     printf("layer nodes: %d\n", layerNodeCount);
     printf("gamma: %f\n", gamma0);
 
-    /* Initialize v and u. */
+    /*** Initialize v and u. ***/
     vlen = layerNodeCount + 1;
-    v = (double *)calloc(vlen, sizeof(double));
+    v = (double *)malloc(vlen * sizeof(double));
+    u = (double *)malloc(vlen * sizeof(double));
     if(v == NULL) {
-        perror("error `main`: not enough memory");
-        return -1;
-    }
-    u = (double *)calloc(vlen, sizeof(double));
-    if(u == NULL) {
         perror("error `main`: not enough memory");
         return -2;
     }
-
-    /* Allocate memory for examples. */
-    ret = init(layerCount, layerNodeCount, &w, &x, &y);
-    if(ret < 0)
-        return ret;
-
-    /* Load training data. */
-    printf("load\n");
-    ret = load(TRAIN_SET, x, y);
-    if(ret < 0) {
-        cleanup(layerCount, layerNodeCount, &w, &x, &y);
-        return ret;
+    if(u == NULL) {
+        perror("error `main`: not enough memory");
+        free(v);
+        return -2;
     }
 
-    /* Train classifier. */
-    printf("training... ");
+    /*** Allocate memory for examples. ***/
+    if(init(layerCount, layerNodeCount, &x, &y, &w) < 0) {
+        free(v);
+        free(u);
+        return -2;
+    }
+
+    /*** Load training data. ***/
+    ret = load(TRAIN_SET, x, y);
+    if(ret < 0) {
+        free(v);
+        free(u);
+        cleanup(&x, &y, &w);
+        return -3;
+    }
+
+    /*** Train classifier. ***/
     ret = train(
         x,
         y,
@@ -114,31 +166,28 @@ int main(int argc, char **argv) {
         w
     );
     if(ret < 0) {
-        cleanup(layerCount, layerNodeCount, &w, &x, &y);
-        return ret;
+        free(v);
+        free(u);
+        cleanup(&x, &y, &w);
+        return -4;
     }
-    printf("done.\n");
 
-    /* Load test data. */
+    /*** Load test data. ***/
     ret = load(TEST_SET, x, y);
     if(ret < 0) {
-        cleanup(layerCount, layerNodeCount, &w, &x, &y);
+        free(v);
+        free(u);
+        cleanup(&x, &y, &w);
         return ret;
     }
 
-    /* Test classifier accuracy. */
-    printf("test\n");
-    test(
-        layerCount,
-        layerNodeCount,
-        ret,
-        (const double ***)w,
-        (const double **)x,
-        (const double *)y
-    );
+    /*** Test classifier accuracy. ***/
+    test(x, y, ret, layerCount, layerNodeCount, w);
 
-    /* Cleanup memory from examples. */
-    cleanup(layerCount, layerNodeCount, &w, &x, &y);
+    /*** Cleanup memory from examples. ***/
+    free(v);
+    free(u);
+    cleanup(&x, &y, &w);
 
     return 0;
 }
@@ -152,114 +201,197 @@ int main(int argc, char **argv) {
  *   Trains the weights of the artificial neural network classifier.
  */
 static int train(
-    double **x,
-    double *y,
+    double * const x,
+    double * const y,
     const int count,
     const int layerCount,
     const int layerNodeCount,
     const int epochs,
     const double gamma0,
-    double ***w
+    double * const w
 ) {
-    int e, i, j, k, l;
-    double ***wSwap1, ***wSwap2, ***tmpw, **z, dot, yp, dLy;
+    int e, i, j, k, l, wlen;
+    double *x_i, *wSwap1, *wSwap2, *wptr1, *wptr2, *z, *zcur, *znxt;
+    double dot, yp, dLy;
 
-    /* Allocate swap weights. */
-    i = mallocWeights(layerCount, layerNodeCount, &wSwap2);
-    if(i < 0)
-        return i;
+    /*** Allocate swap weights. ***/
+    wlen = mallocWeights(layerCount, layerNodeCount, &wSwap2);
+    if(wlen < 0)
+        return wlen;
 
-    /* Allocate z. */
+    /*** Allocate z. ***/
     i = mallocz(layerCount, layerNodeCount, &z);
-    if(i < 0)
+    if(i < 0) {
+        freeWeights(&wSwap2);
         return i;
-
-    /* Initialize weights. */
-    fillWeights(layerCount, layerNodeCount, (double * const * const * const)w);
-    wSwap1 = w;
-
-    /* Train over epochs. */
-    for(e = 0; e < epochs; e++) {
-        /* Shuffle examples. */
-        shuffle(count, x, y);
-
-/******************************************************************************/
-
-        /* Adjust weights for each example. */
-        for(i = 0; i < count; i++) {
-
-            /* Compute yp and remember hidden layer features. */
-            memcpy(z[0], x[i], FEATURE_COUNT * sizeof(double));
-            for(l = 1; l < layerCount + 1; l++) {
-                z[l][0] = 1;
-                for(j = 1; j < layerNodeCount + 1; j++) {
-                    dot = 0;
-                    for(k = 0;
-                        k < (l == 1 ? FEATURE_COUNT : layerNodeCount + 1);
-                        k++)
-                        dot += wSwap1[l - 1][j - 1][k] * z[l - 1][k];
-                    z[l][j] = 1.0 / (1.0 + exp(-dot));
-                }
-            }
-            yp = 0;
-            for(j = 0;
-                j < (layerCount > 0 ? layerNodeCount + 1 : FEATURE_COUNT);
-                j++)
-                yp += wSwap1[layerCount][0][j] * z[layerCount][j];
-
-            /* Save derivitive of square loss. */
-            dLy = yp - y[i];
-
-            /* Back propagation. */
-            l = layerCount;
-            for(j = 0;
-                j < (layerCount > 0 ? layerNodeCount + 1 : FEATURE_COUNT);
-                j++) {
-                wSwap2[l][0][j] = wSwap1[l][0][j] - gamma0 * dLy * z[l][j];
-                z[l][j] *= (1.0 - z[l][j]);
-            }
-
-            for(l = l - 1; l >= 0; l--) {
-                for(j = 0; j < layerNodeCount; j++) {
-                    for(k = 0;
-                        k < (l == 0 ? FEATURE_COUNT : layerNodeCount + 1);
-                        k++)
-                        wSwap2[l][j][k] = wSwap1[l][j][k] - gamma0 * dLy
-                            * propagate(
-                                layerCount,
-                                layerNodeCount,
-                                (const double ***)wSwap1,
-                                (const double **)z,
-                                l,
-                                j,
-                                k
-                            );
-                    for(k = 0;
-                        k < (l == 0 ? FEATURE_COUNT : layerNodeCount + 1);
-                        k++)
-                        z[l][k] *= (1.0 - z[l][j]);
-                }
-            }
-            tmpw = wSwap1;
-            wSwap1 = wSwap2;
-            wSwap2 = tmpw;
-
-        }
-
-/******************************************************************************/
-
     }
 
-    /* Copy trained weights into w. */
-    if(w != wSwap1)
-        copyWeights(layerCount, layerNodeCount, wSwap1, w);
+    /*** Initialize weights. ***/
+    fillWeights(wlen, w);
+    wSwap1 = w;
 
-    /* Cleanup memory. */
+    // TODO
+    printf("# w\n");
+    printw(w, layerCount, layerNodeCount);
+
+    if(layerCount > 0) {
+        /*** Train over epochs. ***/
+        for(e = 0; e < epochs; e++) {
+
+            /*** Shuffle examples. ***/
+            shuffle(count, x, y);
+
+/** Sequential 1: Neural Network **********************************************/
+
+            for(i = 0; i < count; i++) {
+                x_i = (x + (i * FEATURE_COUNT));
+                wptr1 = wSwap1;
+                zcur = x_i;
+                znxt = z;
+
+                /*** Compute yp and remember hidden layer features. ***/
+
+                /* First layer. */
+                znxt[0] = 1;
+                for(j = 1; j < layerNodeCount + 1; j++) {
+                    dot = 0;
+                    for(k = 0; k < FEATURE_COUNT; k++)
+                        dot += wptr1[k] * zcur[k];
+                    znxt[j] = 1.0 / (1.0 + exp(-dot));
+                    wptr1 = (wptr1 + FEATURE_COUNT);
+                }
+                zcur = znxt;
+                znxt = (znxt + layerNodeCount + 1);
+
+                /* Remaining layers. */
+                for(j = 1; j < layerCount; j++) {
+                    znxt[0] = 1;
+                    for(k = 1; k < layerNodeCount + 1; k++) {
+                        dot = 0;
+                        for(l = 0; l < layerNodeCount + 1; l++)
+                            dot += wptr1[l] * zcur[l];
+                        znxt[k] = 1.0 / (1.0 + exp(-dot));
+                        wptr1 = (wptr1 + layerNodeCount + 1);
+                    }
+                    zcur = znxt;
+                    znxt = (znxt + layerNodeCount + 1);
+                }
+
+                yp = 0;
+                for(j = 0; j < layerNodeCount + 1; j++)
+                    yp += wptr1[j] * zcur[j];
+                // zcur = znxt;
+                znxt = (zcur - layerNodeCount - 1);
+                
+                /*** Save derivitive of square loss. ***/
+                dLy = yp - y[i];
+                
+                /*** Update weights using back propagation. ***/
+
+                /* Output layer. */
+                l = layerCount;
+                wptr2 = (
+                    wSwap2 + 
+                    layerNodeCount * FEATURE_COUNT + 
+                    (layerCount - 1) * layerNodeCount * (layerNodeCount + 1)
+                );
+                for(j = 0; j < layerNodeCount + 1; j++) {
+                    wptr2[j] = wptr1[j] - gamma0 * dLy * zcur[j];
+                    zcur[j] *= (1.0 - zcur[j]);
+                }
+
+                /* Hidden layers. */
+                zcur = znxt;
+                znxt = (znxt - layerNodeCount - 1);
+                wptr1 = (wptr1 - layerNodeCount * (layerNodeCount + 1));
+                wptr2 = (wptr2 - layerNodeCount * (layerNodeCount + 1));
+                for(l = l - 1; l > 0; l--) {
+                    for(j = 0; j < layerNodeCount; j++) {
+                        for(k = 0; k < layerNodeCount + 1; k++)
+                            wptr2[k] = wptr1[k] - gamma0 * dLy * propagate(
+                                layerCount, layerNodeCount,
+                                x_i, wSwap1, z,
+                                l, j, k
+                            );
+                        for(k = 0; k < layerNodeCount + 1; k++)
+                            zcur[k] *= (1.0 - zcur[k]);
+                    }
+                    zcur = znxt;
+                    znxt = (znxt - layerNodeCount - 1);
+                    wptr1 = (wptr1 - layerNodeCount * (layerNodeCount + 1));
+                    wptr2 = (wptr2 - layerNodeCount * (layerNodeCount + 1));
+                }
+
+                /* Input layer. */
+                for(j = 0; j < layerNodeCount; j++) {
+                    for(k = 0; k < FEATURE_COUNT; k++) {
+                        wSwap2[j * FEATURE_COUNT + k]
+                            = wSwap1[j * FEATURE_COUNT + k]
+                            - gamma0 * dLy * propagate(
+                                layerCount, layerNodeCount,
+                                x_i, wSwap1, z,
+                                0, j, k
+                            );
+                    }
+                }
+                
+                /*** Swap weight buffers. ***/
+                wptr1 = wSwap1;
+                wSwap1 = wSwap2;
+                wSwap2 = wptr1;
+            }
+
+/******************************************************************************/
+
+        }
+    }
+
+    /*** If there are no hidden layers, then training amounts to the ***/
+    /*** perceptron algorithm.                                       ***/
+    else {
+
+        /*** Train over epochs. ***/
+        for(e = 0; e < epochs; e++) {
+            /*** Shuffle examples. ***/
+            shuffle(count, x, y);
+
+/** Sequential 2: Simple dot product ******************************************/
+
+            for(i = 0; i < count; i++) {
+                x_i = (x + (i * FEATURE_COUNT));
+
+                /*** Compute dot product. ***/
+                yp = 0;
+                for(j = 0; j < FEATURE_COUNT; j++)
+                    yp += wSwap1[j] * x_i[j];
+
+                /*** Save derivitive of square loss. ***/
+                dLy = yp - y[i];
+
+                /*** Update weights. ***/
+                for(j = 0; j < FEATURE_COUNT; j++)
+                    wSwap2[j] = wSwap1[j] - gamma0 * dLy * x_i[j];
+
+                /*** Swap weight buffers. ***/
+                wptr1 = wSwap1;
+                wSwap1 = wSwap2;
+                wSwap2 = wptr1;
+            }
+
+/******************************************************************************/
+
+        }
+    }
+
+    /*** Cleanup memory. ***/
     if(w == wSwap1)
-        freeWeights(layerCount, layerNodeCount, &wSwap2);
-    else
-        freeWeights(layerCount, layerNodeCount, &wSwap1);
-    freez(layerCount, &z);
+        freeWeights(&wSwap2);
+    else {
+        /*** Copy trained weights into w. ***/
+        memcpy(w, wSwap1, wlen * sizeof(double));
+        freeWeights(&wSwap1);
+    }
+    freez(&z);
 
     return 0;
 }
@@ -268,26 +400,29 @@ static int train(
  * test
  */
 static void test(
+    const double * const x,
+    const double * const y,
+    const int count,
     const int layerCount,
     const int layerNodeCount,
-    const int count,
-    const double ***w,
-    const double **x,
-    const double *y
+    const double * const w
 ) {
     int i;
-    const double *x_i;
+    const double *x_i = x;
     double y_i, y_p, p, r, f1, accuracy;
-    /* True/False Positive/Negative */
+    /*** True/False Positive/Negative ***/
     int tp = 0;
     int fp = 0;
     int tn = 0;
     int fn = 0;
 
+    // TODO
+    printf("# w\n");
+    printw(w, layerCount, layerNodeCount);
+
     for(i = 0; i < count; i++) {
-        x_i = x[i];
         y_i = y[i];
-        y_p = getPrediction(layerCount, layerNodeCount, w, x_i);
+        y_p = getPrediction(x_i, layerCount, layerNodeCount, w);
         if(y_i > 0 && y_p > 0)
             tp++;
         else if(y_i > 0 && y_p < 0)
@@ -296,6 +431,7 @@ static void test(
             fp++;
         else
             tn++;
+        x_i = (x_i + FEATURE_COUNT);
     }
 
     p = 0;
@@ -314,6 +450,7 @@ static void test(
     }
 
     accuracy = (double)(tp + tn) / (double)count;
+    printf("tp, fp, tn, fn: %d, %d, %d, %d\n", tp, fp, tn, fn);
     printf("accuracy: %f\nf1: %f\n", accuracy, f1);
 }
 
@@ -323,22 +460,34 @@ static void test(
 static double propagate(
     const int layerCount,
     const int layerNodeCount,
-    const double ***w,
-    const double **z,
+    const double * const x_i,
+    const double * const w,
+    const double * const z,
     const int i,
     const int j,
     const int k
 ) {
-    double result = 0;
     int j1;
+    int wl = layerNodeCount * FEATURE_COUNT +
+        i * layerNodeCount * (layerNodeCount + 1);
+    double result = 0;
+    const double * l = (i > 0 ? (z + (i - 1) * (layerNodeCount + 1)) : x_i);
 
-    if(i + 2 < layerCount + 1) {
-      for(j1 = 0; j1 < layerNodeCount; j1++)
-        result += z[i][k] * w[i + 1][j1][j + 1]
-            * propagate(layerCount, layerNodeCount, w, z, i + 1, j1, j + 1);
+    if(i + 1 < layerCount) {
+        for(j1 = 0; j1 < layerNodeCount; j1++)
+            result += l[k] * w[wl + j1 * (layerNodeCount + 1) + j + 1]
+                * propagate(
+                    layerCount, layerNodeCount,
+                    x_i, w, z,
+                    i + 1, j1, j + 1
+                );
     }
-    else
-      result = z[i][k] * w[i + 1][0][j + 1] * z[i + 1][j + 1];
+    else {
+        wl += layerNodeCount * (layerNodeCount + 1);
+        result = l[k]
+            * w[wl + j + 1]
+            * z[(i + 1) * (layerNodeCount + 1) + j + 1];
+    }
 
     return result;
 }
@@ -347,42 +496,46 @@ static double propagate(
  * getPrediction
  */
 static double getPrediction(
+    const double * const x_i,
     const int layerCount,
     const int layerNodeCount,
-    const double ***w,
-    const double *x_i
+    const double * const w
 ) {
     int i, j, k;
-    double *swap1 = v, *swap2 = u, *tmpswap, result = 0;
+    const double *wptr = w;
+    double *zcur, *znxt = v, *ztmp, dot, result = 0;
     if(layerCount > 0) {
-        swap1[0] = 1;
+        /* First layer. */
+        znxt[0] = 1;
         for(i = 1; i < layerNodeCount + 1; i++) {
-            swap1[i] = 0;
-            for(j = 0; j < FEATURE_COUNT; j++) {
-                swap1[i] += x_i[j] * w[0][i - 1][j];
-            }
+            dot = 0;
+            for(j = 0; j < FEATURE_COUNT; j++)
+                dot += wptr[j] * x_i[j];
+            znxt[i] = 1.0 / (1.0 + exp(-dot));
+            wptr = (wptr + FEATURE_COUNT);
         }
-        tmpswap = swap1;
-        swap1 = swap2;
-        swap2 = tmpswap;
+        zcur = znxt;
+        znxt = u;
+        /* Remaining layers. */
         for(i = 1; i < layerCount; i++) {
-            swap1[0] = 1;
+            znxt[0] = 1;
             for(j = 1; j < layerNodeCount + 1; j++) {
-                swap1[j] = 0;
-                for(k = 0; k < layerNodeCount + 1; k++) {
-                    swap1[j] += swap2[k] * w[i][j - 1][k];
-                }
+                dot = 0;
+                for(k = 0; k < layerNodeCount + 1; k++)
+                    dot += wptr[k] * zcur[k];
+                znxt[j] = 1.0 / (1.0 + exp(-dot));
+                wptr = (wptr + layerNodeCount + 1);
             }
-            tmpswap = swap1;
-            swap1 = swap2;
-            swap2 = tmpswap;
+            ztmp = zcur;
+            zcur = znxt;
+            znxt = ztmp;
         }
         for(i = 0; i < layerNodeCount + 1; i++)
-            result += swap2[i] * w[layerCount][0][i];
+            result += wptr[i] * zcur[i];
     }
     else {
         for(i = 0; i < FEATURE_COUNT; i++)
-            result += x_i[i] * w[0][0][i];
+            result += x_i[i] * w[i];
     }
     return result < 0 ? -1 : 1;
 }
@@ -400,7 +553,7 @@ static int parseArgs(
 ) {
     int i;
     for(i = 1; i < argc; i++) {
-        /* layerCount */
+        /*** layerCount ***/
         if(strcmp(argv[i], "-l") == 0) {
             i++;
             if(i == argc) {
@@ -416,7 +569,7 @@ static int parseArgs(
                 return -2;
             }
         }
-        /* layerNodeCount */
+        /*** layerNodeCount ***/
         else if(strcmp(argv[i], "-n") == 0) {
             i++;
             if(i == argc) {
@@ -432,7 +585,7 @@ static int parseArgs(
                 return -4;
             }
         }
-        /* epochs */
+        /*** epochs ***/
         else if(strcmp(argv[i], "-e") == 0) {
             i++;
             if(i == argc) {
@@ -448,7 +601,7 @@ static int parseArgs(
                 return -6;
             }
         }
-        /* gamma0 */
+        /*** gamma0 ***/
         else if(strcmp(argv[i], "-g") == 0) {
             i++;
             if(i == argc) {
@@ -463,7 +616,7 @@ static int parseArgs(
                 return -8;
             }
         }
-        /* unexpected argument */
+        /*** unexpected argument ***/
         else {
             fprintf(stderr, "error: unexpected argument\n");
             printUsage(argv[0]);

@@ -7,10 +7,16 @@ Memory management stuff.
 
 *******************************************************************************/
 
-int init(const int, const int, double ****, double ***, double **);
-void cleanup(const int, const int, double ****, double ***, double **);
-int mallocWeights(const int, const int, double ****);
-void freeWeights(const int, const int, double ****);
-void copyWeights(const int, const int, double ***, double ***);
-int mallocz(const int, const int, double ***);
-void freez(const int, double ***);
+int init(
+    const int layerCount,
+    const int layerNodeCount,
+    double **x,
+    double **y,
+    double **w
+);
+int mallocWeights(const int layerCount, const int layerNodeCount, double **w);
+int mallocz(const int layerCount, const int layerNodeCount, double **z);
+
+void cleanup(double **x, double **y, double **w);
+void freeWeights(double **w);
+void freez(double **z);

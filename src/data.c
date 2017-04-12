@@ -35,21 +35,21 @@ $ gcc -Wall -lm -c -o data.o data.c
  */
 int load(
     const char * const filePath,
-    double * const * const x,
+    double * const x,
     double * const y
 ) {
     int i, val, count = 0;
     char line[0x400], *token;
     FILE *file;
 
-    /* Open the file. */
+    /*** Open the file. ***/
     file = fopen(filePath, "r");
     if(file == NULL) {
         perror("error `load`: opening file");
         return -1;
     }
 
-    /* Read each line. */
+    /*** Read each line. ***/
     while(fgets(line, 0x400, file) != NULL) {
         if(line[0] == 0) {
             perror("error `load`: reading line");
@@ -57,23 +57,21 @@ int load(
             return -2;
         }
 
-        /* Get the label from the line. */
+        /*** Get the label from the line. ***/
         token = strtok(line, " ");
         if(token == NULL) {
             fprintf(stderr, "error `load`: parsing label\n");
             fclose(file);
             return -3;
         }
-        y[count] = atoi(token);
-        if(y[count] == 0.0)
-            y[count] = -1;
+        y[count] = (atoi(token) == 0 ? -1 : 1);
 
-        /* Reset the example features. */
-        x[count][0] = 1;
+        /*** Reset the example features. ***/
+        x[count] = 1;
         for(i = 1; i < FEATURE_COUNT; i++)
-            x[count][i] = 0;
+            x[count + i] = 0;
 
-        /* Parse example features from the line. */
+        /*** Parse example features from the line. ***/
         while((token = strtok(NULL, " ")) != NULL) {
             if(sscanf(token, "%d:%d", &i, &val) < 2) {
                 fprintf(
@@ -84,15 +82,15 @@ int load(
                 fclose(file);
                 return -4;
             }
-            x[count][i] = 1.0 - exp((double)(-1 * val));
+            x[count + i] = 1.0 - exp((double)(-val));
         }
 
-        /* Empty the string and update example count. */
+        /*** Empty the string and update example count. ***/
         line[0] = 0;
         count++;
     }
 
-    /* Close the file and return the number of examples. */
+    /*** Close the file and return the number of examples. ***/
     fclose(file);
     return count;
 }
@@ -101,43 +99,29 @@ int load(
  * fillWeights
  */
 void fillWeights(
-    const int layerCount,
-    const int layerNodeCount,
-    double * const * const * const w
+    const int len,
+    double * const w
 ) {
-    int i, j, k;
+    int i;
     srand(time(NULL));
-    if(layerCount > 0) {
-        for(i = 0; i < layerNodeCount; i++) {
-            for(j = 0; j < FEATURE_COUNT; j++)
-                w[0][i][j] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-        }
-        for(i = 1; i < layerCount; i++) {
-            for(j = 0; j < layerNodeCount; j++)
-                for(k = 0; k < layerNodeCount + 1; k++)
-                    w[i][j][k] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-        }
-        for(i = 0; i < FEATURE_COUNT; i++)
-            w[layerCount][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-    }
-    else {
-        for(i = 0; i < FEATURE_COUNT; i++)
-            w[0][0][i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
-    }
+    for(i = 0; i < len; i++)
+        w[i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
 }
 
 /**
  * shuffle
  */
-void shuffle(const int count, double **x, double *y) {
-    int i, j;
-    double *tmpx, tmpy;
+void shuffle(const int count, double * const x, double * const y) {
+    int i, j, k;
+    double tmpx, tmpy;
     srand(time(NULL));
     for(i = 0; i < count; i++) {
         j = rand() % count;
-        tmpx = x[i];
-        x[i] = x[j];
-        x[j] = tmpx;
+        for(k = 0; k < FEATURE_COUNT; k++) {
+            tmpx = x[i * FEATURE_COUNT + k];
+            x[i * FEATURE_COUNT + k] = x[j * FEATURE_COUNT + k];
+            x[j * FEATURE_COUNT + k] = tmpx;
+        }
         tmpy = y[i];
         y[i] = y[j];
         y[j] = tmpy;

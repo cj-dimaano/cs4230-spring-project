@@ -13,6 +13,6 @@ Data management stuff.
 #define MAX_EXAMPLES 0x2000
 
 
-int load(const char * const, double * const * const, double * const);
-void fillWeights(const int, const int, double * const * const * const);
-void shuffle(const int, double **, double *);
+int load(const char * const, double * const, double * const);
+void fillWeights(const int, double * const);
+void shuffle(const int, double * const, double * const);
