@@ -36,8 +36,8 @@
 ehthumbs.db
 Thumbs.db
 
-# Misc #
-########
+# Project #
+###########
 .vscode
 obj
 bin
