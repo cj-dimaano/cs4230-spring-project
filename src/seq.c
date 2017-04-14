@@ -53,54 +53,6 @@ static double getPrediction(
 static int parseArgs(const int, char **, int *, int *, int *, double *);
 static void printUsage(const char * const);
 
-
-
-static void printarr(const double * const arr, const int len) {
-    int i;
-    printf("[");
-    for(i = 0; i < len; i++)
-        printf(" %.3f ", arr[i]);
-    printf("]\n");
-}
-
-static void printlayer(const double * const layer, const int n, const int w) {
-    int i;
-    printf("[\n");
-    for(i = 0; i < n; i++)
-        printarr((layer + i * w), w);
-    printf("]\n");
-}
-
-static void printw(const double * const w, const int l, const int n) {
-    int i;
-    const double *wptr = w;
-    printf("[\n");
-    printlayer(wptr, (l > 0 ? n : 1), FEATURE_COUNT);
-    wptr = (wptr + (l > 0 ? n : 1) * FEATURE_COUNT);
-    for(i = 1; i < l; i++) {
-        printlayer(wptr, n, n + 1);
-        wptr = (wptr + n * (n + 1));
-    }
-    if(l > 0) {
-        printlayer(wptr, 1, n + 1);
-    }
-    printf("]\n");
-}
-
-// static void printx_i(const double * const x_i) {
-//     int i;
-//     printf("[");
-//     for(i = 0; i < FEATURE_COUNT; i++) {
-//         if(x_i[i] == 0.0)
-//             printf(" . ");
-//         else
-//             printf(" %f ", x_i[i]);
-//     }
-//     printf("]\n");
-// }
-
-
-
 /** Static data ***************************************************************/
 
 /*** For calculating predictions ***/
@@ -230,10 +182,6 @@ static int train(
     fillWeights(wlen, w);
     wSwap1 = w;
 
-    // TODO
-    printf("# w\n");
-    printw(w, layerCount, layerNodeCount);
-
     if(layerCount > 0) {
         /*** Train over epochs. ***/
         for(e = 0; e < epochs; e++) {
@@ -308,7 +256,9 @@ static int train(
                 for(l = l - 1; l > 0; l--) {
                     for(j = 0; j < layerNodeCount; j++) {
                         for(k = 0; k < layerNodeCount + 1; k++)
-                            wptr2[k] = wptr1[k] - gamma0 * dLy * propagate(
+                            wptr2[j * (layerNodeCount + 1) + k]
+                                = wptr1[j * (layerNodeCount + 1) + k]
+                                - gamma0 * dLy * propagate(
                                 layerCount, layerNodeCount,
                                 x_i, wSwap1, z,
                                 l, j, k
@@ -416,10 +366,6 @@ static void test(
     int tn = 0;
     int fn = 0;
 
-    // TODO
-    printf("# w\n");
-    printw(w, layerCount, layerNodeCount);
-
     for(i = 0; i < count; i++) {
         y_i = y[i];
         y_p = getPrediction(x_i, layerCount, layerNodeCount, w);
@@ -450,7 +396,6 @@ static void test(
     }
 
     accuracy = (double)(tp + tn) / (double)count;
-    printf("tp, fp, tn, fn: %d, %d, %d, %d\n", tp, fp, tn, fn);
     printf("accuracy: %f\nf1: %f\n", accuracy, f1);
 }
 
@@ -505,25 +450,27 @@ static double getPrediction(
     const double *wptr = w;
     double *zcur, *znxt = v, *ztmp, dot, result = 0;
     if(layerCount > 0) {
-        /* First layer. */
+        /*** First layer. ***/
         znxt[0] = 1;
         for(i = 1; i < layerNodeCount + 1; i++) {
             dot = 0;
             for(j = 0; j < FEATURE_COUNT; j++)
                 dot += wptr[j] * x_i[j];
+            // znxt[i] = dot;
             znxt[i] = 1.0 / (1.0 + exp(-dot));
             wptr = (wptr + FEATURE_COUNT);
         }
         zcur = znxt;
         znxt = u;
-        /* Remaining layers. */
+        /*** Remaining layers. ***/
         for(i = 1; i < layerCount; i++) {
             znxt[0] = 1;
-            for(j = 1; j < layerNodeCount + 1; j++) {
+            for(j = 0; j < layerNodeCount; j++) {
                 dot = 0;
                 for(k = 0; k < layerNodeCount + 1; k++)
                     dot += wptr[k] * zcur[k];
-                znxt[j] = 1.0 / (1.0 + exp(-dot));
+                // znxt[j + 1] = dot;
+                znxt[j + 1] = 1.0 / (1.0 + exp(-dot));
                 wptr = (wptr + layerNodeCount + 1);
             }
             ztmp = zcur;

@@ -67,9 +67,9 @@ int load(
         y[count] = (atoi(token) == 0 ? -1 : 1);
 
         /*** Reset the example features. ***/
-        x[count] = 1;
+        x[count * FEATURE_COUNT] = 1;
         for(i = 1; i < FEATURE_COUNT; i++)
-            x[count + i] = 0;
+            x[count * FEATURE_COUNT + i] = 0;
 
         /*** Parse example features from the line. ***/
         while((token = strtok(NULL, " ")) != NULL) {
@@ -82,7 +82,7 @@ int load(
                 fclose(file);
                 return -4;
             }
-            x[count + i] = 1.0 - exp((double)(-val));
+            x[count * FEATURE_COUNT + i] = 1.0 - exp((double)(-val));
         }
 
         /*** Empty the string and update example count. ***/

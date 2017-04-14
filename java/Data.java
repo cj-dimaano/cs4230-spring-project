@@ -21,8 +21,8 @@ import java.util.Set;
 public class Data {
   
   public static final int FEATURE_COUNT = 360;
-  public static final String TRAIN_SET = "data/data-splits/data.train";
-  public static final String TEST_SET = "data/data-splits/data.test";
+  public static final String TRAIN_SET = "data/data.train";
+  public static final String TEST_SET = "data/data.test";
 
   public static boolean loadData(
     String file,
