@@ -2,8 +2,8 @@ SDIR=src
 ODIR=obj
 BDIR=bin
 
-CC=gcc
-CFLAGS=-Wall -O3 -I$(SDIR)
+CC=nvcc
+CFLAGS=-I$(SDIR) -I/usr/local/cuda/8.0/cuda/include
 
 LIBS=-lm
 
@@ -16,7 +16,7 @@ OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	mkdir -p $(ODIR) && $(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
 
-seq: $(SDIR)/seq.c $(OBJ)
+cuda: $(SDIR)/cuda.cu $(OBJ)
 	mkdir -p $(BDIR) && $(CC) -o $(BDIR)/$@ $^ $(CFLAGS) $(LIBS) && cp -R data bin
 
 .PHONY: clean

@@ -9,8 +9,10 @@ Date created: March 29, 2017
 #include <stdlib.h>
 #include <string.h>
 
+extern "C" {
 #include "data.h"
 #include "mem.h"
+}
 
 /** Declarations **************************************************************/
 
@@ -89,6 +91,13 @@ int main(int argc, char **argv) {
 
 /** Static functions **********************************************************/
 
+extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, int feature_count, double a, double b, double c, double e, int i, double t) {
+  int bx = blockIdx.x;
+  int tx = threadIdx.x;
+
+  p_w[tx + 32 * bx] = p_w[tx + 32 * bx] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * feature_count + tx + 32 * bx] + b * p_w[tx + 32 * bx]);
+}
+
 /**
  * train
  *
@@ -118,8 +127,35 @@ static int train(
                 dot += x[i * FEATURE_COUNT + j] * w[j];
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
-            for(j = 0; j < FEATURE_COUNT; j++)
-                w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
+
+            // Allocate buffers on the GPU.
+            double * p_x;
+            double * p_w;
+
+            // TODO: Probably want to make these constants in the mem.h file instead of re-computing them.
+            int x_size = MAX_EXAMPLES * FEATURE_COUNT * sizeof(double);
+            int w_size = FEATURE_COUNT * sizeof(double);
+
+            cudaMalloc((void **)&p_x, x_size);
+            cudaMalloc((void **)&p_w, w_size);
+
+            // Copy host buffers into device buffers.
+            cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
+            cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
+
+            // Perform the computation.
+            dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
+            dim3 dimBlock(32, 1);
+
+            trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, FEATURE_COUNT, a, b, c, e, i, t);
+
+            // Copy the result off of the GPU.
+            cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
+
+            // Free the created buffers.
+            cudaFree(p_x);
+            cudaFree(p_w);
+
             t += 1.0;
         }
     }
