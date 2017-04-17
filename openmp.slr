@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --time=1:00:00
+#SBATCH --nodes=1
+#SBATCH -o out.log
+#SBATCH -e err.log
+#SBATCH --export=NONE
+
+#SBATCH --account=soc-kp
+#SBATCH --partition=soc-kp
+
+# Load modules
+module load intel
+
+# Run
+make seq
+make omp
+
+printf "# sequential\n"
+./bin/seq
+for (( i = 1; i <= 20; i++ ))
+do
+    export OMP_NUM_THREADS=$i
+    printf "\n# parallel (OPM_NUM_THREADS=$OMP_NUM_THREADS)\n"
+    ./bin/omp
+done

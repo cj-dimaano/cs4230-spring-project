@@ -1,7 +1,7 @@
 /*******************************************************************************
-File: seq.c
+File: omp.c
 Created by: CJ Dimaano
-Date created: March 29, 2017
+Date created: April 16, 2017
 *******************************************************************************/
 
 #include <math.h>
@@ -119,10 +119,14 @@ static int train(
         shuffle(count, x, y);
         for(i = 0; i < count; i++) {
             dot = 0;
+            #pragma omp simd
             for(j = 0; j < FEATURE_COUNT; j++)
                 dot += x[i * FEATURE_COUNT + j] * w[j];
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
+            #pragma omp parallel for \
+            firstprivate(i, gamma0, a, b, c, t, x, w) \
+            private(j)
             for(j = 0; j < FEATURE_COUNT; j++)
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
             t += 1.0;
