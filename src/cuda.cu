@@ -96,6 +96,8 @@ extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, int
   int tx = threadIdx.x;
 
   p_w[tx + 32 * bx] = p_w[tx + 32 * bx] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * feature_count + tx + 32 * bx] + b * p_w[tx + 32 * bx]);
+
+  __syncthreads();
 }
 
 /**
