@@ -142,6 +142,10 @@ static int train(
 
     printf("Performing computation...\n");
 
+    // Perform the computation.
+    dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
+    dim3 dimBlock(32, 1);
+
     for(epoch = 0; epoch < epochs; epoch++) {
         shuffle(count, x, y);
         for(i = 0; i < count; i++) {
@@ -150,10 +154,6 @@ static int train(
                 dot += x[i * FEATURE_COUNT + j] * w[j];
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
-
-            // Perform the computation.
-            dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
-            dim3 dimBlock(32, 1);
 
             trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, FEATURE_COUNT, a, b, c, e, i, t);
 
