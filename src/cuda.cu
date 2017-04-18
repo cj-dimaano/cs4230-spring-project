@@ -121,6 +121,27 @@ static int train(
 
     // fillWeights(w);
 
+    // Allocate buffers on the GPU.
+    double * p_x;
+    double * p_w;
+
+    // TODO: Probably want to make these constants in the mem.h file instead of re-computing them.
+    int x_size = MAX_EXAMPLES * FEATURE_COUNT * sizeof(double);
+    int w_size = FEATURE_COUNT * sizeof(double);
+
+    printf("Mallocing memory on device...\n");
+
+    cudaMalloc((void **)&p_x, x_size);
+    cudaMalloc((void **)&p_w, w_size);
+
+    printf("Copying buffers to device...\n");
+
+    // Copy host buffers into device buffers.
+    cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
+
+    printf("Performing computation...\n");
+
     for(epoch = 0; epoch < epochs; epoch++) {
         shuffle(count, x, y);
         for(i = 0; i < count; i++) {
@@ -130,37 +151,22 @@ static int train(
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
 
-            // Allocate buffers on the GPU.
-            double * p_x;
-            double * p_w;
-
-            // TODO: Probably want to make these constants in the mem.h file instead of re-computing them.
-            int x_size = MAX_EXAMPLES * FEATURE_COUNT * sizeof(double);
-            int w_size = FEATURE_COUNT * sizeof(double);
-
-            cudaMalloc((void **)&p_x, x_size);
-            cudaMalloc((void **)&p_w, w_size);
-
-            // Copy host buffers into device buffers.
-            cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
-            cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
-
             // Perform the computation.
             dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
             dim3 dimBlock(32, 1);
 
             trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, FEATURE_COUNT, a, b, c, e, i, t);
 
-            // Copy the result off of the GPU.
-            cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
-
-            // Free the created buffers.
-            cudaFree(p_x);
-            cudaFree(p_w);
-
             t += 1.0;
         }
     }
+
+    // Copy the result off of the GPU.
+    cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
+
+    // Free the created buffers.
+    cudaFree(p_x);
+    cudaFree(p_w);
 
     return 0;
 }
