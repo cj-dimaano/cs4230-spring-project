@@ -93,12 +93,12 @@ int main(int argc, char **argv) {
 
 /** Static functions **********************************************************/
 
-extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, int feature_count, double a, double b, double c, double e, int i, double t) {
+extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, double a, double b, double c, double e, int i, double t) {
   int bx = blockIdx.x;
   int tx = threadIdx.x;
   int j = tx + 32 * bx;
 
-  if (j <= feature_count) {
+  if (j <= FEATURE_COUNT) {
     p_w[j] = p_w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * FEATURE_COUNT + j] + b * p_w[j]);
   }
 
@@ -164,9 +164,11 @@ static int train(
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
 
-            trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, FEATURE_COUNT, a, b, c, e, i, t);
+            trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, a, b, c, e, i, t);
             gpuErrchk( cudaPeekAtLastError() );
             gpuErrchk( cudaDeviceSynchronize() );
+
+            cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
 
             t += 1.0;
         }
