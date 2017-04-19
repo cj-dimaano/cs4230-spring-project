@@ -9,6 +9,8 @@ Date created: March 29, 2017
 #include <stdlib.h>
 #include <string.h>
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
 extern "C" {
 #include "data.h"
 #include "mem.h"
@@ -94,11 +96,24 @@ int main(int argc, char **argv) {
 extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, int feature_count, double a, double b, double c, double e, int i, double t) {
   int bx = blockIdx.x;
   int tx = threadIdx.x;
+  int j = tx + 32 * bx;
 
-  p_w[tx + 32 * bx] = p_w[tx + 32 * bx] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * feature_count + tx + 32 * bx] + b * p_w[tx + 32 * bx]);
+  if (j <= feature_count) {
+    p_w[j] = p_w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * FEATURE_COUNT + j] + b * p_w[j]);
+  }
 
   __syncthreads();
 }
+
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+  if (code != cudaSuccess) 
+    {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+    }
+}
+
 
 /**
  * train
@@ -129,18 +144,12 @@ static int train(
     int x_size = MAX_EXAMPLES * FEATURE_COUNT * sizeof(double);
     int w_size = FEATURE_COUNT * sizeof(double);
 
-    printf("Mallocing memory on device...\n");
-
     cudaMalloc((void **)&p_x, x_size);
     cudaMalloc((void **)&p_w, w_size);
-
-    printf("Copying buffers to device...\n");
 
     // Copy host buffers into device buffers.
     cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
     cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
-
-    printf("Performing computation...\n");
 
     // Perform the computation.
     dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
@@ -156,6 +165,8 @@ static int train(
             a = -y[i] * e / (1 + e);
 
             trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, FEATURE_COUNT, a, b, c, e, i, t);
+            gpuErrchk( cudaPeekAtLastError() );
+            gpuErrchk( cudaDeviceSynchronize() );
 
             t += 1.0;
         }
