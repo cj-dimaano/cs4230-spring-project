@@ -7,16 +7,5 @@ Memory management stuff.
 
 *******************************************************************************/
 
-int init(
-    const int layerCount,
-    const int layerNodeCount,
-    double **x,
-    double **y,
-    double **w
-);
-int mallocWeights(const int layerCount, const int layerNodeCount, double **w);
-int mallocz(const int layerCount, const int layerNodeCount, double **z);
-
+int init(double **x, double **y, double **w);
 void cleanup(double **x, double **y, double **w);
-void freeWeights(double **w);
-void freez(double **z);

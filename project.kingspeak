@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#SBATCH --time=24:00:00 # walltime, abbreviated by -t
+#SBATCH --nodes=1 # number of cluster nodes, abbreviated by -N 
+#SBATCH -o output # name of the stdout
+#SBATCH --account=soc-kp # account - abbreviated by -A 
+#SBATCH --partition=soc-kp # partition, abbreviated by -p
+
+module load openmpi
+
+cd ~/project/cs4230-spring-project/
+
+echo "Seq"
+srun ./bin/seq
+
+echo "MPI"
+mpiexec -n 2 ./bin/mpi

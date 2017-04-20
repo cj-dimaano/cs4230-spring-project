@@ -10,6 +10,7 @@ Date created: March 29, 2017
 #include <string.h>
 
 #include <sys/time.h>
+#include <mpi.h>
 
 #include "data.h"
 #include "mem.h"
@@ -39,13 +40,23 @@ static double getPrediction(
 static int parseArgs(const int, char **, int *, double *, double *, double *);
 static void printElapsed(struct timeval begin, struct timeval end);
 
+int rank, size;
+
 /** Main **********************************************************************/
 
 int main(int argc, char **argv) {
     double *w, *x, *y, c = 1 << 10, gamma0 = 0.01, s = 10e5;
     int ret, epochs = 200;
 
-    /*** Parse command-line arguments. ***/
+    MPI_Init(&argc, &argv);
+    
+	// get rank and size
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+if (rank == 0)
+{
+	/*** Parse command-line arguments. ***/
     ret = parseArgs(argc, argv, &epochs, &c, &gamma0, &s);
     if(ret < 0) {
         return -1;
@@ -54,11 +65,14 @@ int main(int argc, char **argv) {
     printf("C: %f\n", c);
     printf("gamma0: %f\n", gamma0);
     printf("s: %f\n", s);
-
+}
     /*** Allocate memory. ***/
     if(init(&x, &y, &w) < 0) {
         return -2;
     }
+
+    if (rank == 0)
+{
 
     /*** Load training data. ***/
     ret = load(TRAIN_SET, x, y);
@@ -66,6 +80,7 @@ int main(int argc, char **argv) {
         cleanup(&x, &y, &w);
         return -3;
     }
+}
 
     /*** Train classifier. ***/
     ret = train(x, y, ret, epochs, c, gamma0, s, w);
@@ -73,7 +88,8 @@ int main(int argc, char **argv) {
         cleanup(&x, &y, &w);
         return -4;
     }
-
+if (rank == 0)
+{
     /*** Load test data. ***/
     ret = load(TEST_SET, x, y);
     if(ret < 0) {
@@ -83,9 +99,11 @@ int main(int argc, char **argv) {
 
     /*** Test classifier accuracy. ***/
     test(x, y, ret, w);
-
+}
     /*** Cleanup memory from examples. ***/
     cleanup(&x, &y, &w);
+
+    MPI_Finalize();
 
     return 0;
 }
@@ -109,30 +127,65 @@ static int train(
     double * const w
 ) {
     int epoch, i, j;
-    double a, b = 2 / (s * s), t = 1, dot, e;
+    double a, b = 2 / (s * s), t = 1, dot, l_dot, e;
     struct timeval begin, end;
 
+    #define x_size MAX_EXAMPLES * FEATURE_COUNT
+    #define y_size MAX_EXAMPLES
+    #define w_size FEATURE_COUNT
+    
+    double *x_buf, *w_buf, *x_row;
+    x_buf = (double*) malloc(x_size*sizeof(double));
+    w_buf = (double*) malloc(w_size*sizeof(double));
+    x_row = (double*) malloc(FEATURE_COUNT*sizeof(double));
+    
 /******************************************************************************/
     gettimeofday(&begin, NULL);
 
     for(epoch = 0; epoch < epochs; epoch++) {
-        shuffle(count, x, y);
+	if (rank == 0)
+	        shuffle(count, x, y);
+		
         for(i = 0; i < count; i++) {
-            dot = 0;
+	    if (rank == 0)
+            {
+		memcpy(x_row, &(x[i*FEATURE_COUNT]), FEATURE_COUNT * sizeof(double));
+//                for(j=0; j<FEATURE_COUNT; ++j)
+//		{
+//	          x_row[j] = x[i*FEATURE_COUNT+j];
+//		}
+	    }
+	    
+            MPI_Bcast(x_row, FEATURE_COUNT, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	    MPI_Bcast(w, w_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	    
+	    l_dot = 0;
             for(j = 0; j < FEATURE_COUNT; j++)
-                dot += x[i * FEATURE_COUNT + j] * w[j];
+                l_dot += x_row[j] * w[j];
+
+ //           MPI_Reduce(&l_dot, &dot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		dot - l_dot;
+		
+	    if (rank == 0)
+	    {
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
             for(j = 0; j < FEATURE_COUNT; j++)
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
             t += 1.0;
+	    }
         }
     }
 
     gettimeofday(&end, NULL);
 /******************************************************************************/
 
-    printElapsed(begin, end);
+    free(x_buf);
+    free(w_buf);
+    free(x_row);
+
+    if (rank == 0)
+	    printElapsed(begin, end);
     return 0;
 }
 

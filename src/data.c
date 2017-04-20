@@ -98,30 +98,28 @@ int load(
 /**
  * fillWeights
  */
-void fillWeights(
-    const int len,
-    double * const w
-) {
+void fillWeights(double * const w) {
     int i;
     srand(time(NULL));
-    for(i = 0; i < len; i++)
-        w[i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
+    for(i = 0; i < FEATURE_COUNT; i++) {
+        do {
+            w[i] = ((double)rand() / (double)RAND_MAX) * 2 - 1;
+        } while(w[i] == 0.0);
+    }
 }
 
 /**
  * shuffle
  */
 void shuffle(const int count, double * const x, double * const y) {
-    int i, j, k;
-    double tmpx, tmpy;
+    int i, j;
+    double tmpx[FEATURE_COUNT], tmpy;
     srand(time(NULL));
     for(i = 0; i < count; i++) {
         j = rand() % count;
-        for(k = 0; k < FEATURE_COUNT; k++) {
-            tmpx = x[i * FEATURE_COUNT + k];
-            x[i * FEATURE_COUNT + k] = x[j * FEATURE_COUNT + k];
-            x[j * FEATURE_COUNT + k] = tmpx;
-        }
+        memcpy(&tmpx[0], (x + i * FEATURE_COUNT), FEATURE_COUNT * sizeof(double));
+        memcpy((x + i * FEATURE_COUNT), (x + j * FEATURE_COUNT), FEATURE_COUNT * sizeof(double));
+        memcpy((x + j * FEATURE_COUNT), &tmpx[0], FEATURE_COUNT * sizeof(double));
         tmpy = y[i];
         y[i] = y[j];
         y[j] = tmpy;

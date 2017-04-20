@@ -2,7 +2,7 @@ SDIR=src
 ODIR=obj
 BDIR=bin
 
-CC=gcc
+CC=mpicc
 CFLAGS=-Wall -O3 -I$(SDIR)
 
 LIBS=-lm
@@ -15,6 +15,9 @@ OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	mkdir -p $(ODIR) && $(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
+
+mpi: $(SDIR)/mpi.c $(OBJ)
+	mkdir -p $(BDIR) && $(CC) -o $(BDIR)/$@ $^ $(CFLAGS) $(LIBS) && cp -R data bin
 
 seq: $(SDIR)/seq.c $(OBJ)
 	mkdir -p $(BDIR) && $(CC) -o $(BDIR)/$@ $^ $(CFLAGS) $(LIBS) && cp -R data bin
