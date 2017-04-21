@@ -98,7 +98,7 @@ extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, dou
   int tx = threadIdx.x;
   int j = tx + 32 * bx;
 
-  if (j <= FEATURE_COUNT) {
+  if (j < FEATURE_COUNT) {
     p_w[j] = p_w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * p_x[i * FEATURE_COUNT + j] + b * p_w[j]);
   }
 
@@ -112,6 +112,14 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
       if (abort) exit(code);
     }
+}
+
+int compare(double *a, double *b, int size, double threshold) {
+  int i;
+  for (i=0; i<size; i++) {
+    if (abs(a[i]-b[i]) > threshold) return 0;
+  }
+  return 1;
 }
 
 
@@ -151,12 +159,31 @@ static int train(
     cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
     cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
 
+    // double * temp_x = (double *) malloc(x_size);
+    // cudaMemcpy(temp_x, p_x, x_size, cudaMemcpyDeviceToHost);
+    // int res = compare(temp_x, x, MAX_EXAMPLES * FEATURE_COUNT, 0.001);
+    // if (res == 0) {
+    //   printf("Mismatch between X.\n");
+    //   printf("Index Sequential Parallel\n");
+    //   for (j = 0; j < MAX_EXAMPLES * FEATURE_COUNT; j++) {
+    //     printf("%d %f %f\n", j, x[j], temp_x[j]);
+    //   }
+    // } {
+    //   printf("No mismatch between x arrays.\n");
+    // }
+
+    // free(temp_x);
+
+    // Temporary buffer for verifying the output of the GPU.
+    double * temp_w = (double *) malloc(w_size);
+
     // Perform the computation.
     dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
     dim3 dimBlock(32, 1);
 
     for(epoch = 0; epoch < epochs; epoch++) {
         shuffle(count, x, y);
+        cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
         for(i = 0; i < count; i++) {
             dot = 0;
             for(j = 0; j < FEATURE_COUNT; j++)
@@ -168,10 +195,30 @@ static int train(
             gpuErrchk( cudaPeekAtLastError() );
             gpuErrchk( cudaDeviceSynchronize() );
 
+            // for(j = 0; j < FEATURE_COUNT; j++) {
+            //   w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
+            // }
+
+
+            // Copy p_w to the temporary buffer and compare it with the result of the sequential version.
+            // cudaMemcpy(temp_w, p_w, w_size, cudaMemcpyDeviceToHost);
+            // int res = compare(temp_w, w, FEATURE_COUNT, 0.001);
+            // if (res == 0) {
+            //   printf("Mismatch between results.\n");
+            //   printf("Index Sequential Parallel\n");
+            //   for (j = 0; j < FEATURE_COUNT; j++) {
+            //     printf("%d %f %f\n", j, w[j], temp_w[j]);
+            //   }
+            //   exit(1);
+            // }
+            // exit(1);
+
             cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
 
             t += 1.0;
         }
+
+        // free(temp_w);
     }
 
     // Copy the result off of the GPU.

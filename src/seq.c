@@ -119,7 +119,6 @@ static int train(
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
             for(j = 0; j < FEATURE_COUNT; j++) {
-              printf("%d %f\n", j, w[j], x[i * FEATURE_COUNT + j]);
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
             }
             t += 1.0;
