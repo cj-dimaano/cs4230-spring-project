@@ -66,14 +66,14 @@ if (rank == 0)
     printf("gamma0: %f\n", gamma0);
     printf("s: %f\n", s);
 }
+
     /*** Allocate memory. ***/
     if(init(&x, &y, &w) < 0) {
         return -2;
     }
 
-    if (rank == 0)
+if (rank == 0)
 {
-
     /*** Load training data. ***/
     ret = load(TRAIN_SET, x, y);
     if(ret < 0) {
@@ -88,6 +88,7 @@ if (rank == 0)
         cleanup(&x, &y, &w);
         return -4;
     }
+    
 if (rank == 0)
 {
     /*** Load test data. ***/
@@ -133,41 +134,58 @@ static int train(
     #define x_size MAX_EXAMPLES * FEATURE_COUNT
     #define y_size MAX_EXAMPLES
     #define w_size FEATURE_COUNT
+    #define rank_part_size ((int) ceil((float) FEATURE_COUNT / (float) size))
     
-    double *x_buf, *w_buf, *x_row;
-    x_buf = (double*) malloc(x_size*sizeof(double));
+    double *x_buf, *w_buf, *x_tmp, *w_tmp, *dot_buf;
+    x_tmp = (double*) malloc(size*rank_part_size*sizeof(double));
+    w_tmp = (double*) malloc(size*rank_part_size*sizeof(double));
+    
+    x_buf = (double*) malloc(rank_part_size*sizeof(double));
     w_buf = (double*) malloc(w_size*sizeof(double));
-    x_row = (double*) malloc(FEATURE_COUNT*sizeof(double));
-    
+
+    dot_buf = (double*) malloc(size*sizeof(double));
+
+//    printf("Rank %d of %d\n", rank, size);
 /******************************************************************************/
     gettimeofday(&begin, NULL);
 
     for(epoch = 0; epoch < epochs; epoch++) {
 	if (rank == 0)
+    	{
 	        shuffle(count, x, y);
+	}
 		
         for(i = 0; i < count; i++) {
 	    if (rank == 0)
             {
-		memcpy(x_row, &(x[i*FEATURE_COUNT]), FEATURE_COUNT * sizeof(double));
-//                for(j=0; j<FEATURE_COUNT; ++j)
-//		{
-//	          x_row[j] = x[i*FEATURE_COUNT+j];
-//		}
-	    }
-	    
-            MPI_Bcast(x_row, FEATURE_COUNT, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	    MPI_Bcast(w, w_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	    
-	    l_dot = 0;
-            for(j = 0; j < FEATURE_COUNT; j++)
-                l_dot += x_row[j] * w[j];
+		// zero out the tmp, this way the extra slot doesn't effect the dot product
+		memset(x_tmp, 0, size * rank_part_size * sizeof(double));
+		memset(w_tmp, 0, size * rank_part_size * sizeof(double));
 
- //           MPI_Reduce(&l_dot, &dot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		dot - l_dot;
-		
+		// copy the data, bad I know, but I just want something that *works*
+		memcpy(x_tmp, &(x[i*FEATURE_COUNT]), FEATURE_COUNT * sizeof(double));
+		memcpy(w_tmp, w, FEATURE_COUNT * sizeof(double));
+
+		//printf("%d -> %d split into %d chunks of size %d\n", FEATURE_COUNT, size*rank_part_size, size, rank_part_size);
+	    }
+
+	    MPI_Scatter(x_tmp, rank_part_size, MPI_DOUBLE, x_buf, rank_part_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	    MPI_Scatter(w_tmp, rank_part_size, MPI_DOUBLE, w_buf, rank_part_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	    
+//	    printf("Rank %d finished with loop iteration %d\n",rank, i);
+	    l_dot = 0.0;
+            for(j = 0; j < rank_part_size; j++)
+                l_dot += x_buf[j] * w_buf[j];
+
+	    MPI_Gather(&l_dot, 1, MPI_DOUBLE, dot_buf, size, MPI_DOUBLE, 0, MPI_COMM_WORLD
+
 	    if (rank == 0)
 	    {
+	    	dot = 0.0;
+	    	for (j=0; j<size;++j)
+			dot += dot_buf[j];
+
+		printf("Iteration %d, dot product = %lf\n", i, dot);
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
             for(j = 0; j < FEATURE_COUNT; j++)
@@ -182,7 +200,9 @@ static int train(
 
     free(x_buf);
     free(w_buf);
-    free(x_row);
+    free(x_tmp);
+    free(w_tmp);
+    free(dot_buf);
 
     if (rank == 0)
 	    printElapsed(begin, end);
