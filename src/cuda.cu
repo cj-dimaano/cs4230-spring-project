@@ -9,6 +9,9 @@ Date created: March 29, 2017
 #include <stdlib.h>
 #include <string.h>
 
+#include <curand.h>
+#include <curand_kernel.h>
+
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
 extern "C" {
@@ -105,6 +108,32 @@ extern __global__ void trainCompute(double *p_w, double *p_x, double gamma0, dou
   __syncthreads();
 }
 
+void generateMoves(int count, int * moves) {
+  int i, j, tmp;
+
+  for (i = 0; i < count; i++) {
+    moves[i] = i;
+  }
+
+  srand(time(NULL));
+  for (i = 0; i < count; i++) {
+    j = rand() % count;
+    tmp = moves[i];
+    moves[i] = moves[j];
+    moves[j] = tmp;
+  }
+}
+
+extern __global__ void performMoves(int count, int * moves, double * p_x, double * p_x_new, double * p_y, double *p_y_new) {
+  int tid = threadIdx.x + 32 * blockIdx.x;
+
+  if (tid < count) {
+    memcpy((p_x_new + moves[tid] * FEATURE_COUNT), (p_x + tid * FEATURE_COUNT), FEATURE_COUNT * sizeof(double));
+    p_y_new[moves[tid]] = p_y[tid];
+  }
+  __syncthreads();
+}
+
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
   if (code != cudaSuccess) 
@@ -143,13 +172,32 @@ static int train(
     double a, b = 2 / (s * s), t = 1, dot, e;
 
     // Allocate buffers on the GPU.
-    double * p_x;
-    double * p_w;
-
     int x_size = MAX_EXAMPLES * FEATURE_COUNT * sizeof(double);
+    int y_size = MAX_EXAMPLES * sizeof(double);
     int w_size = FEATURE_COUNT * sizeof(double);
 
+    double * p_x;
     cudaMalloc((void **)&p_x, x_size);
+
+    double * p_x_new;
+    cudaMalloc((void **)&p_x_new, x_size);
+
+    double * p_x_temp;
+
+    int * moves = (int *)malloc(count * sizeof(int));
+
+    int * p_moves;
+    cudaMalloc((void **)&p_moves, count * sizeof(int));
+
+    double *p_y;
+    cudaMalloc((void **)&p_y, y_size);
+
+    double *p_y_new;
+    cudaMalloc((void **)&p_y_new, y_size);
+
+    double *p_y_temp;
+
+    double * p_w;
     cudaMalloc((void **)&p_w, w_size);
 
     // Copy host buffers into device buffers.
@@ -157,12 +205,34 @@ static int train(
     cudaMemcpy(p_w, w, w_size, cudaMemcpyHostToDevice);
 
     // Perform the computation.
+    dim3 shuffleGrid((count+31)/32, 1);
+    dim3 shuffleBlock(32, 1);
+
     dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
     dim3 dimBlock(32, 1);
 
     for(epoch = 0; epoch < epochs; epoch++) {
-        shuffle(count, x, y);
-        cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
+
+        generateMoves(count, moves);
+
+        cudaMemcpy(p_moves, moves, count * sizeof(int), cudaMemcpyHostToDevice);
+        performMoves<<<shuffleGrid,shuffleBlock>>>(count, p_moves, p_x, p_x_new, p_y, p_y_new);
+
+        gpuErrchk( cudaDeviceSynchronize() );
+
+        cudaMemcpy(y, p_y_new, y_size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(x, p_x_new, x_size, cudaMemcpyDeviceToHost);
+
+        gpuErrchk( cudaDeviceSynchronize() );
+
+        p_x_temp = p_x;
+        p_x = p_x_new;
+        p_x_new = p_x_temp;
+
+        p_y_temp = p_y;
+        p_y = p_y_new;
+        p_y_new = p_y_temp;
+
         for(i = 0; i < count; i++) {
             dot = 0;
             for(j = 0; j < FEATURE_COUNT; j++)
@@ -185,6 +255,9 @@ static int train(
 
     // Free the created buffers.
     cudaFree(p_x);
+    cudaFree(p_x_new);
+    cudaFree(p_y);
+    cudaFree(moves);
     cudaFree(p_w);
 
     return 0;

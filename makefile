@@ -4,7 +4,7 @@ BDIR=bin
 
 PCC=nvcc
 CC=gcc
-PCFLAGS=-I$(SDIR) -I/usr/local/cuda/8.0/cuda/include
+PCFLAGS=-I$(SDIR) -I/usr/local/cuda/8.0/cuda/include -arch sm_60
 CFLAGS=-I$(SDIR)
 
 LIBS=-lm
