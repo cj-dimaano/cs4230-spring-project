@@ -1,0 +1,190 @@
+mkdir -p bin && icc -o bin/seq src/seq.c obj/data.o obj/mem.o -Wall -O3 -Isrc -lm && cp -R data bin
+mkdir -p bin && icc -o bin/omp src/omp.c obj/data.o obj/mem.o -Wall -O3 -Isrc -qopenmp -lm && cp -R data bin
+# sequential
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 1087.495 ms
+accuracy: 0.841169
+f1: 0.763529
+
+# parallel (OPM_NUM_THREADS=1)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 1345.490 ms
+accuracy: 0.840774
+f1: 0.769583
+
+# parallel (OPM_NUM_THREADS=2)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 5910.496 ms
+accuracy: 0.842750
+f1: 0.770737
+
+# parallel (OPM_NUM_THREADS=3)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 5714.192 ms
+accuracy: 0.840379
+f1: 0.765933
+
+# parallel (OPM_NUM_THREADS=4)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 5517.546 ms
+accuracy: 0.841565
+f1: 0.760597
+
+# parallel (OPM_NUM_THREADS=5)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6078.316 ms
+accuracy: 0.840774
+f1: 0.769054
+
+# parallel (OPM_NUM_THREADS=6)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6489.667 ms
+accuracy: 0.842750
+f1: 0.763658
+
+# parallel (OPM_NUM_THREADS=7)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6000.638 ms
+accuracy: 0.840379
+f1: 0.763189
+
+# parallel (OPM_NUM_THREADS=8)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6350.993 ms
+accuracy: 0.840774
+f1: 0.770893
+
+# parallel (OPM_NUM_THREADS=9)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6355.901 ms
+accuracy: 0.840774
+f1: 0.766647
+
+# parallel (OPM_NUM_THREADS=10)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 3500.235 ms
+accuracy: 0.839984
+f1: 0.765761
+
+# parallel (OPM_NUM_THREADS=11)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6631.177 ms
+accuracy: 0.840774
+f1: 0.769583
+
+# parallel (OPM_NUM_THREADS=12)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6746.869 ms
+accuracy: 0.841169
+f1: 0.762692
+
+# parallel (OPM_NUM_THREADS=13)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6851.926 ms
+accuracy: 0.840379
+f1: 0.768614
+
+# parallel (OPM_NUM_THREADS=14)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6988.201 ms
+accuracy: 0.842355
+f1: 0.764879
+
+# parallel (OPM_NUM_THREADS=15)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6684.411 ms
+accuracy: 0.841565
+f1: 0.763979
+
+# parallel (OPM_NUM_THREADS=16)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 7320.744 ms
+accuracy: 0.839589
+f1: 0.768000
+
+# parallel (OPM_NUM_THREADS=17)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 7417.715 ms
+accuracy: 0.840774
+f1: 0.765561
+
+# parallel (OPM_NUM_THREADS=18)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 7036.331 ms
+accuracy: 0.843145
+f1: 0.764392
+
+# parallel (OPM_NUM_THREADS=19)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 7084.693 ms
+accuracy: 0.842750
+f1: 0.770737
+
+# parallel (OPM_NUM_THREADS=20)
+epochs: 200
+C: 1024.000000
+gamma0: 0.010000
+s: 1000000.000000
+duration: 6962.464 ms
+accuracy: 0.842355
+f1: 0.762923
