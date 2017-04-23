@@ -8,6 +8,7 @@ Date created: March 29, 2017
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "data.h"
 #include "mem.h"
@@ -64,12 +65,21 @@ int main(int argc, char **argv) {
         return -3;
     }
 
+    timeval start_t;
+    gettimeofday(&start_t, NULL);
+
     /*** Train classifier. ***/
     ret = train(x, y, ret, epochs, c, gamma0, s, w);
     if(ret < 0) {
         cleanup(&x, &y, &w);
         return -4;
     }
+
+    timeval end_t;
+    gettimeofday(&end_t, NULL);
+
+    long train_time = end_t.tv_sec - start_t.tv_sec;
+    printf("Training time: %d\n", train_time);
 
     /*** Load test data. ***/
     ret = load(TEST_SET, x, y);
