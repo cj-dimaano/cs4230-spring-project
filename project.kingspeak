@@ -6,6 +6,7 @@
 #SBATCH --account=soc-kp # account - abbreviated by -A 
 #SBATCH --partition=soc-kp # partition, abbreviated by -p
 
+#module load mpich
 module load openmpi
 
 cd ~/project/cs4230-spring-project/

@@ -54,6 +54,8 @@ int main(int argc, char **argv) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	printf("Rank %d initialized.\n", rank);
+
 if (rank == 0)
 {
 	/*** Parse command-line arguments. ***/
@@ -65,8 +67,17 @@ if (rank == 0)
     printf("C: %f\n", c);
     printf("gamma0: %f\n", gamma0);
     printf("s: %f\n", s);
+    
 }
 
+    // send command line arguments to all ranks
+    MPI_Bcast(&epochs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&c, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&gamma0, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&s, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+	
+	printf("Rank %d allocating memory.\n", rank);
     /*** Allocate memory. ***/
     if(init(&x, &y, &w) < 0) {
         return -2;
@@ -78,16 +89,19 @@ if (rank == 0)
     ret = load(TRAIN_SET, x, y);
     if(ret < 0) {
         cleanup(&x, &y, &w);
-        return -3;
+        return -3; 
     }
 }
+    MPI_Bcast(&ret, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
+    printf("Rank %d starting training.\n", rank);
     /*** Train classifier. ***/
     ret = train(x, y, ret, epochs, c, gamma0, s, w);
     if(ret < 0) {
         cleanup(&x, &y, &w);
         return -4;
     }
+    printf("Rank %d finished training.\n", rank);
     
 if (rank == 0)
 {
@@ -101,9 +115,11 @@ if (rank == 0)
     /*** Test classifier accuracy. ***/
     test(x, y, ret, w);
 }
+    printf("Rank %d cleaning up.\n", rank);
     /*** Cleanup memory from examples. ***/
     cleanup(&x, &y, &w);
 
+    printf("Rank %d finishing.\n", rank);
     MPI_Finalize();
 
     return 0;
@@ -131,6 +147,9 @@ static int train(
     double a, b = 2 / (s * s), t = 1, dot, l_dot, e;
     struct timeval begin, end;
 
+    printf("rank %d, raining function start.\n", rank);
+    printf("rank %d, parameters:\ncount = %d\nepochs = %d\n",rank, count, epochs); 
+    
     #define x_size MAX_EXAMPLES * FEATURE_COUNT
     #define y_size MAX_EXAMPLES
     #define w_size FEATURE_COUNT
@@ -177,21 +196,23 @@ static int train(
             for(j = 0; j < rank_part_size; j++)
                 l_dot += x_buf[j] * w_buf[j];
 
-	    MPI_Gather(&l_dot, 1, MPI_DOUBLE, dot_buf, size, MPI_DOUBLE, 0, MPI_COMM_WORLD
+//	    MPI_Gather(&l_dot, 1, MPI_DOUBLE, dot_buf, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	    MPI_Reduce(&l_dot, &dot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	    if (rank == 0)
 	    {
-	    	dot = 0.0;
-	    	for (j=0; j<size;++j)
-			dot += dot_buf[j];
+//	    	dot = 0.0;
+//	    	for (j=0; j<size;++j)
+//			dot += dot_buf[j];
 
-		printf("Iteration %d, dot product = %lf\n", i, dot);
+//		printf("Iteration %d, dot product = %lf\n", i, dot);
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
             for(j = 0; j < FEATURE_COUNT; j++)
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
             t += 1.0;
 	    }
+	   // printf("Rank %d, loop %d.\n", rank, i);
         }
     }
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 
 module load gcc openmpi
+#module load mpich
 
 make seq && make mpi && sleep 1 && sbatch project.kingspeak && watch squeue -u u0163512 && head -n 60  output
