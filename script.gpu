@@ -11,4 +11,11 @@
 #SBATCH --export=ALL
 #SBATCH --qos=soc-gpu-kp
 ulimit -c unlimited -s
-./bin/cuda
+
+epochs=200
+while [ $epochs -lt 204800 ]; do
+    ./bin/cuda -e $epochs
+    ./bin/seq -e $epochs
+    echo ""
+    let epochs*=2
+done

@@ -65,8 +65,6 @@ int main(int argc, char **argv) {
         return -3;
     }
 
-    timeval start_t;
-    gettimeofday(&start_t, NULL);
 
     /*** Train classifier. ***/
     ret = train(x, y, ret, epochs, c, gamma0, s, w);
@@ -75,11 +73,6 @@ int main(int argc, char **argv) {
         return -4;
     }
 
-    timeval end_t;
-    gettimeofday(&end_t, NULL);
-
-    long train_time = end_t.tv_sec - start_t.tv_sec;
-    printf("Training time: %d\n", train_time);
 
     /*** Load test data. ***/
     ret = load(TEST_SET, x, y);
@@ -120,6 +113,11 @@ static int train(
 
     // fillWeights(w);
 
+
+    struct timeval start_t;
+    struct timeval end_t;
+    long train_time = 0;
+
     for(epoch = 0; epoch < epochs; epoch++) {
         shuffle(count, x, y);
         for(i = 0; i < count; i++) {
@@ -128,16 +126,19 @@ static int train(
                 dot += x[i * FEATURE_COUNT + j] * w[j];
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
+
+            gettimeofday(&start_t, NULL);
             for(j = 0; j < FEATURE_COUNT; j++) {
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
             }
+            gettimeofday(&end_t, NULL);
+            train_time += end_t.tv_sec - start_t.tv_sec;
+
             t += 1.0;
         }
     }
 
-    for (j = 0; j < FEATURE_COUNT; j++) {
-      printf("%d %f\n", j, w[j]);
-    }
+    printf("Training time: %ld\n", train_time);
 
     return 0;
 }

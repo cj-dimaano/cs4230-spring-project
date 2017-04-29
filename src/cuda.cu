@@ -69,9 +69,6 @@ int main(int argc, char **argv) {
         return -3;
     }
 
-    timeval start_t;
-    gettimeofday(&start_t, NULL);
-
     /*** Train classifier. ***/
     ret = train(x, y, ret, epochs, c, gamma0, s, w);
     if(ret < 0) {
@@ -79,11 +76,6 @@ int main(int argc, char **argv) {
         return -4;
     }
 
-    timeval end_t;
-    gettimeofday(&end_t, NULL);
-
-    long train_time = end_t.tv_sec - start_t.tv_sec;
-    printf("Training time: %d\n", train_time);
 
     /*** Load test data. ***/
     ret = load(TEST_SET, x, y);
@@ -170,9 +162,16 @@ static int train(
     dim3 dimGrid((FEATURE_COUNT+31)/32, 1);
     dim3 dimBlock(32, 1);
 
+    struct timeval start_t;
+    struct timeval end_t;
+    long train_time = 0;
+
     for(epoch = 0; epoch < epochs; epoch++) {
+
         shuffle(count, x, y);
+
         cudaMemcpy(p_x, x, x_size, cudaMemcpyHostToDevice);
+
         for(i = 0; i < count; i++) {
             dot = 0;
             for(j = 0; j < FEATURE_COUNT; j++)
@@ -180,15 +179,21 @@ static int train(
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
 
+            gettimeofday(&start_t, NULL);
             trainCompute<<<dimGrid,dimBlock>>>(p_w, p_x, gamma0, a, b, c, e, i, t);
-            gpuErrchk( cudaPeekAtLastError() );
-            gpuErrchk( cudaDeviceSynchronize() );
+            gettimeofday(&end_t, NULL);
+            train_time += end_t.tv_sec - start_t.tv_sec;
+            cudaPeekAtLastError();
+            cudaDeviceSynchronize();
 
             cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
 
             t += 1.0;
         }
+
     }
+
+    printf("Training time: %d\n", train_time);
 
     // Copy the result off of the GPU.
     cudaMemcpy(w, p_w, w_size, cudaMemcpyDeviceToHost);
