@@ -37,7 +37,6 @@ static double getPrediction(
     const double * const w
 );
 static int parseArgs(const int, char **, int *, double *, double *, double *);
-static void printElapsed(struct timeval begin, struct timeval end);
 
 /** Main **********************************************************************/
 
@@ -93,6 +92,18 @@ int main(int argc, char **argv) {
 /** Static functions **********************************************************/
 
 /**
+ * updateElapsed
+ */
+static void updateElapsed(
+    struct timeval begin,
+    struct timeval end,
+    double *elapsed
+) {
+    (*elapsed) += (end.tv_sec - begin.tv_sec) * 1000.0;
+    (*elapsed) += (end.tv_usec - begin.tv_usec) / 1000.0;
+}
+
+/**
  * train
  *
  * @summary
@@ -110,33 +121,38 @@ static int train(
 ) {
     int epoch, i, j;
     double a, b = 2 / (s * s), t = 1, dot, e;
+    double elapsed = 0;
     struct timeval begin, end;
 
 /******************************************************************************/
-    gettimeofday(&begin, NULL);
-
     for(epoch = 0; epoch < epochs; epoch++) {
         shuffle(count, x, y);
         for(i = 0; i < count; i++) {
+            gettimeofday(&begin, NULL);
             dot = 0;
             #pragma omp simd
             for(j = 0; j < FEATURE_COUNT; j++)
                 dot += x[i * FEATURE_COUNT + j] * w[j];
+            gettimeofday(&end, NULL);
+            updateElapsed(begin, end, &elapsed);
+
             e = exp(-y[i] * dot);
             a = -y[i] * e / (1 + e);
+
+            gettimeofday(&begin, NULL);
             #pragma omp parallel for \
             firstprivate(i, gamma0, a, b, c, t, x, w) \
             private(j)
             for(j = 0; j < FEATURE_COUNT; j++)
                 w[j] = w[j] - (gamma0 / (1 + gamma0 * t / c)) * (a * x[i * FEATURE_COUNT + j] + b * w[j]);
+            gettimeofday(&end, NULL);
+            updateElapsed(begin, end, &elapsed);
             t += 1.0;
         }
     }
-
-    gettimeofday(&end, NULL);
 /******************************************************************************/
 
-    printElapsed(begin, end);
+    printf("duration: %.3f ms\n", elapsed);
     return 0;
 }
 
@@ -302,13 +318,4 @@ static int parseArgs(
         }
     }
     return 0;
-}
-
-/**
- * printElapsed
- */
-static void printElapsed(struct timeval begin, struct timeval end) {
-    double elapsed = (end.tv_sec - begin.tv_sec) * 1000.0;
-    elapsed += (end.tv_usec - begin.tv_usec) / 1000.0;
-    printf("duration: %.3f ms\n", elapsed);
 }

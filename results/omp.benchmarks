@@ -5,186 +5,186 @@ epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 1087.495 ms
-accuracy: 0.841169
-f1: 0.763529
+duration: 553.574 ms
+accuracy: 0.840774
+f1: 0.770108
 
 # parallel (OPM_NUM_THREADS=1)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 1345.490 ms
-accuracy: 0.840774
-f1: 0.769583
+duration: 838.012 ms
+accuracy: 0.843145
+f1: 0.771182
 
 # parallel (OPM_NUM_THREADS=2)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 5910.496 ms
-accuracy: 0.842750
-f1: 0.770737
+duration: 3776.093 ms
+accuracy: 0.839984
+f1: 0.762742
 
 # parallel (OPM_NUM_THREADS=3)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 5714.192 ms
-accuracy: 0.840379
-f1: 0.765933
+duration: 3982.165 ms
+accuracy: 0.839194
+f1: 0.770186
 
 # parallel (OPM_NUM_THREADS=4)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 5517.546 ms
-accuracy: 0.841565
-f1: 0.760597
+duration: 3366.199 ms
+accuracy: 0.842750
+f1: 0.764218
 
 # parallel (OPM_NUM_THREADS=5)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6078.316 ms
-accuracy: 0.840774
-f1: 0.769054
+duration: 4141.230 ms
+accuracy: 0.839984
+f1: 0.770017
 
 # parallel (OPM_NUM_THREADS=6)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6489.667 ms
-accuracy: 0.842750
-f1: 0.763658
+duration: 4838.473 ms
+accuracy: 0.842355
+f1: 0.770294
 
 # parallel (OPM_NUM_THREADS=7)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6000.638 ms
+duration: 4425.613 ms
 accuracy: 0.840379
-f1: 0.763189
+f1: 0.762911
 
 # parallel (OPM_NUM_THREADS=8)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6350.993 ms
-accuracy: 0.840774
-f1: 0.770893
+duration: 4671.407 ms
+accuracy: 0.838404
+f1: 0.769577
 
 # parallel (OPM_NUM_THREADS=9)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6355.901 ms
-accuracy: 0.840774
-f1: 0.766647
+duration: 5109.525 ms
+accuracy: 0.839589
+f1: 0.763953
 
 # parallel (OPM_NUM_THREADS=10)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 3500.235 ms
-accuracy: 0.839984
-f1: 0.765761
+duration: 5049.076 ms
+accuracy: 0.840379
+f1: 0.762632
 
 # parallel (OPM_NUM_THREADS=11)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6631.177 ms
-accuracy: 0.840774
-f1: 0.769583
+duration: 4977.176 ms
+accuracy: 0.841169
+f1: 0.769231
 
 # parallel (OPM_NUM_THREADS=12)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6746.869 ms
-accuracy: 0.841169
-f1: 0.762692
+duration: 5189.808 ms
+accuracy: 0.839984
+f1: 0.764672
 
 # parallel (OPM_NUM_THREADS=13)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6851.926 ms
-accuracy: 0.840379
-f1: 0.768614
+duration: 5005.609 ms
+accuracy: 0.841169
+f1: 0.754878
 
 # parallel (OPM_NUM_THREADS=14)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6988.201 ms
-accuracy: 0.842355
-f1: 0.764879
+duration: 4871.286 ms
+accuracy: 0.835638
+f1: 0.768889
 
 # parallel (OPM_NUM_THREADS=15)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6684.411 ms
-accuracy: 0.841565
-f1: 0.763979
+duration: 4579.718 ms
+accuracy: 0.840774
+f1: 0.769583
 
 # parallel (OPM_NUM_THREADS=16)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 7320.744 ms
-accuracy: 0.839589
-f1: 0.768000
+duration: 5613.733 ms
+accuracy: 0.840774
+f1: 0.770108
 
 # parallel (OPM_NUM_THREADS=17)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 7417.715 ms
-accuracy: 0.840774
-f1: 0.765561
+duration: 5262.682 ms
+accuracy: 0.842750
+f1: 0.765330
 
 # parallel (OPM_NUM_THREADS=18)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 7036.331 ms
-accuracy: 0.843145
-f1: 0.764392
+duration: 5550.126 ms
+accuracy: 0.838799
+f1: 0.763341
 
 # parallel (OPM_NUM_THREADS=19)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 7084.693 ms
-accuracy: 0.842750
-f1: 0.770737
+duration: 5244.531 ms
+accuracy: 0.840774
+f1: 0.763359
 
 # parallel (OPM_NUM_THREADS=20)
 epochs: 200
 C: 1024.000000
 gamma0: 0.010000
 s: 1000000.000000
-duration: 6962.464 ms
-accuracy: 0.842355
-f1: 0.762923
+duration: 5610.843 ms
+accuracy: 0.843935
+f1: 0.772072
