@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --time=00:02:00 # walltime, abbreviated by -t
-#SBATCH --nodes=1 # number of cluster nodes, abbreviated by -N 
+#SBATCH --time=01:00:00 # walltime, abbreviated by -t
+#SBATCH --nodes=6 # number of cluster nodes, abbreviated by -N 
 #SBATCH -o output # name of the stdout
 #SBATCH --account=soc-kp # account - abbreviated by -A 
 #SBATCH --partition=soc-kp # partition, abbreviated by -p
@@ -13,6 +13,12 @@ cd ~/project/cs4230-spring-project/
 
 echo "Seq"
 srun ./bin/seq
+echo
 
-echo "MPI"
-mpiexec -n 2 --mca btl_tcp_if_include eth0 ./bin/mpi
+for n in `seq 1 20`
+do
+	echo "---------------------------"
+	echo "MPI (n=$n)"
+	mpiexec -n $n --mca btl_tcp_if_include eth0 ./bin/mpi
+	echo 
+done
